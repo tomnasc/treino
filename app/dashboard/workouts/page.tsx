@@ -1,0 +1,158 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Plus, Search, Filter, ArrowUpDown } from "lucide-react"
+
+import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
+import { getCurrentUser, UserSession } from "@/app/lib/auth"
+import { supabase } from "@/app/lib/supabase"
+import { Workout } from "@/app/types/database.types"
+
+export default function WorkoutsPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<UserSession | null>(null)
+  const [workouts, setWorkouts] = useState<Workout[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setIsLoading(true)
+        const currentUser = await getCurrentUser()
+        if (!currentUser) {
+          router.push("/login")
+          return
+        }
+        setUser(currentUser)
+
+        const { data, error } = await supabase
+          .from("workouts")
+          .select("*")
+          .eq("created_by", currentUser.id)
+          .order("created_at", { ascending: sortOrder === 'asc' })
+
+        if (error) {
+          console.error("Erro ao buscar treinos:", error)
+        } else {
+          setWorkouts(data || [])
+        }
+      } catch (error) {
+        console.error("Erro:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [router, sortOrder])
+
+  const filteredWorkouts = workouts.filter(workout => 
+    workout.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (workout.description && workout.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Meus Treinos</h2>
+        <p className="text-muted-foreground">
+          Gerencie e acompanhe seus treinos personalizados.
+        </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="flex flex-1 max-w-sm items-center space-x-2">
+          <Input
+            placeholder="Buscar treinos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+            type="search"
+          />
+          <Button variant="outline" size="icon">
+            <Search className="h-4 w-4" />
+            <span className="sr-only">Buscar</span>
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={toggleSortOrder}>
+            <ArrowUpDown className="mr-2 h-4 w-4" />
+            {sortOrder === 'asc' ? 'Mais novos' : 'Mais antigos'}
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard/workouts/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Treino
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex h-[400px] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+        </div>
+      ) : filteredWorkouts.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredWorkouts.map((workout) => (
+            <Link 
+              key={workout.id} 
+              href={`/dashboard/workouts/${workout.id}`}
+              className="block group"
+            >
+              <div className="rounded-lg border p-4 transition-colors hover:border-primary hover:bg-muted/50">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">{workout.name}</h3>
+                    {workout.is_ai_generated && (
+                      <span className="rounded-full bg-secondary/10 px-2 py-1 text-xs text-secondary">
+                        IA
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {workout.description || "Sem descrição"}
+                  </p>
+                  <div className="mt-2 flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">
+                      {workout.created_at ? new Date(workout.created_at).toLocaleDateString() : 'Data não disponível'}
+                    </span>
+                    <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      Ver detalhes
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center h-[400px]">
+          <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
+            <h3 className="mt-4 text-lg font-semibold">Nenhum treino encontrado</h3>
+            <p className="mb-4 mt-2 text-sm text-muted-foreground">
+              {searchTerm 
+                ? "Não encontramos treinos com esses termos. Tente uma busca diferente." 
+                : "Você ainda não criou nenhum treino. Comece criando um agora!"}
+            </p>
+            <Button asChild>
+              <Link href="/dashboard/workouts/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Criar Treino
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+} 

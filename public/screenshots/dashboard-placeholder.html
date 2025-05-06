@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Screenshot Placeholder</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      width: 1280px;
+      height: 720px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      position: relative;
+    }
+    .header {
+      background-color: #3B82F6;
+      color: white;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .content {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 24px;
+      height: calc(100% - 72px);
+    }
+    .sidebar {
+      background-color: #f1f5f9;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .menu-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      color: #1e293b;
+    }
+    .menu-item.active {
+      background-color: #3B82F6;
+      color: white;
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #1e293b;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .workout-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+    }
+    .workout-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #1e293b;
+    }
+    .workout-desc {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .badge {
+      display: inline-block;
+      background-color: #dbeafe;
+      color: #2563eb;
+      padding: 4px 8px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">Treino na Mão</div>
+      <div>Perfil</div>
+    </div>
+    <div class="content">
+      <div class="sidebar">
+        <div class="menu-item active">Dashboard</div>
+        <div class="menu-item">Meus Treinos</div>
+        <div class="menu-item">Modo Treino</div>
+        <div class="menu-item">Histórico</div>
+        <div class="menu-item">Configurações</div>
+      </div>
+      <div class="main">
+        <div class="card">
+          <div class="card-title">Próximo Treino</div>
+          <div>Treino A - Peito e Tríceps</div>
+          <div style="margin-top: 8px; color: #64748b;">Agendado para hoje às 18:00</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Meus Treinos Recentes</div>
+          <div class="grid">
+            <div class="workout-card">
+              <div class="workout-title">Treino A - Peito e Tríceps</div>
+              <div class="workout-desc">5 exercícios • 45min</div>
+              <div class="badge">Semana 1</div>
+            </div>
+            <div class="workout-card">
+              <div class="workout-title">Treino B - Costas e Bíceps</div>
+              <div class="workout-desc">6 exercícios • 50min</div>
+              <div class="badge">Semana 1</div>
+            </div>
+            <div class="workout-card">
+              <div class="workout-title">Treino C - Pernas e Ombros</div>
+              <div class="workout-desc">7 exercícios • 60min</div>
+              <div class="badge">Semana 1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html> 

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Treino na Mão</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      color: #333;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 500px;
+      width: 100%;
+      padding: 30px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #3B82F6;
+    }
+    .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    .btn {
+      margin-top: 20px;
+      background-color: #3B82F6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #2563EB;
+    }
+    .btn-secondary {
+      background-color: transparent;
+      color: #3B82F6;
+      border: 1px solid #3B82F6;
+      margin-right: 10px;
+    }
+    .btn-secondary:hover {
+      background-color: rgba(59, 130, 246, 0.1);
+    }
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+      gap: 10px;
+    }
+    .feature {
+      background-color: #f1f5f9;
+      border-radius: 5px;
+      padding: 15px;
+      width: calc(50% - 10px);
+      box-sizing: border-box;
+      text-align: left;
+    }
+    .feature h3 {
+      margin-top: 0;
+      font-size: 16px;
+      color: #3B82F6;
+    }
+    .feature p {
+      margin-bottom: 0;
+      font-size: 14px;
+      color: #666;
+    }
+    @media (max-width: 500px) {
+      .features {
+        flex-direction: column;
+      }
+      .feature {
+        width: 100%;
+      }
+    }
+    .logo {
+      font-weight: bold;
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #3B82F6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Treino na Mão</div>
+    <div class="icon">📶</div>
+    <h1>Você está offline</h1>
+    <p>Não conseguimos estabelecer conexão com a internet. Algumas funcionalidades podem não estar disponíveis, mas não se preocupe!</p>
+    
+    <div class="features">
+      <div class="feature">
+        <h3>Treinos Disponíveis</h3>
+        <p>Os treinos que você já baixou ainda estão acessíveis e podem ser visualizados.</p>
+      </div>
+      <div class="feature">
+        <h3>Modo Treino</h3>
+        <p>Você pode iniciar e completar seus treinos mesmo offline.</p>
+      </div>
+    </div>
+    
+    <div style="margin-top: 20px;">
+      <button class="btn btn-secondary" onclick="window.location.href='/dashboard'">Ir para Dashboard</button>
+      <button class="btn" onclick="window.location.reload()">Tentar novamente</button>
+    </div>
+  </div>
+  
+  <script>
+    // Verifica periodicamente a conexão e recarrega se estiver online
+    function checkConnection() {
+      if (navigator.onLine) {
+        window.location.reload();
+      }
+    }
+    
+    // Verifica a cada 10 segundos
+    setInterval(checkConnection, 10000);
+    
+    // Adiciona um evento para quando a conexão voltar
+    window.addEventListener('online', function() {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html> 

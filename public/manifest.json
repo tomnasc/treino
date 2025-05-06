@@ -1,0 +1,55 @@
+{
+  "name": "Treino na Mão",
+  "short_name": "Treino",
+  "description": "Aplicativo de gerenciamento de treinos de academia",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Meus Treinos",
+      "short_name": "Treinos",
+      "description": "Ver todos os seus treinos",
+      "url": "/dashboard/workouts",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Iniciar Treino",
+      "short_name": "Treinar",
+      "description": "Iniciar um treino",
+      "url": "/dashboard/train",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "categories": ["fitness", "health", "lifestyle"],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "iarc_rating_id": "",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "scope": "/"
+} 
