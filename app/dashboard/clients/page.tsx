@@ -138,7 +138,7 @@ export default function ClientsPage() {
       // Verificar se o usuário existe
       const { data: userData, error: userError } = await supabase
         .from("profiles")
-        .select("id, role")
+        .select("id, role, subscription_status")
         .eq("email", email)
         .maybeSingle()
       
@@ -150,6 +150,19 @@ export default function ClientsPage() {
         toast({
           title: "Usuário não encontrado",
           description: "Não encontramos um usuário com este email.",
+          variant: "destructive"
+        })
+        return
+      }
+      
+      // Verificar se o usuário é gratuito (não tem assinatura ativa)
+      if (userData.role === 'free' || 
+          (!userData.subscription_status || 
+           (userData.subscription_status !== 'active' && 
+            userData.subscription_status !== 'trialing'))) {
+        toast({
+          title: "Usuário com plano gratuito",
+          description: "Usuários com plano gratuito não podem ser adicionados como clientes. O usuário precisa fazer upgrade para o plano Premium.",
           variant: "destructive"
         })
         return

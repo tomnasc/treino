@@ -179,6 +179,14 @@ export function ClientList({
                 value={newClientEmail}
                 onChange={(e) => setNewClientEmail(e.target.value)}
               />
+              <div className="mt-3 text-sm text-muted-foreground">
+                <div className="p-3 border rounded-md bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900">
+                  <p className="font-medium text-amber-800 dark:text-amber-300">Importante:</p>
+                  <p className="mt-1">
+                    Apenas usuários com plano Premium podem ser adicionados como alunos. Usuários gratuitos precisam fazer upgrade.
+                  </p>
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button

@@ -21,7 +21,9 @@ export const subscriptionPlans = [
       'Geração ilimitada de treinos com IA',
       'Treinos personalizados exclusivos',
       'Análises avançadas de progresso',
-      'Suporte prioritário'
+      'Suporte prioritário',
+      'Acesso aos serviços de personal trainer',
+      'Sem limite de treinos cadastrados'
     ],
     price: 'R$ 6,97',
     interval: 'month',
@@ -36,12 +38,22 @@ export const subscriptionPlans = [
       'Treinos personalizados exclusivos',
       'Análises avançadas de progresso',
       'Suporte prioritário',
+      'Acesso aos serviços de personal trainer',
+      'Sem limite de treinos cadastrados',
       'Economia significativa em relação ao plano mensal'
     ],
     price: 'R$ 66,90',
     interval: 'year',
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ANUAL
   }
+];
+
+// Define as limitações dos usuários gratuitos para referência no frontend
+export const freeUserLimitations = [
+  'Limite de 3 treinos cadastrados',
+  'Não pode ser cliente de personal trainers',
+  'Funcionalidades avançadas de IA limitadas',
+  'Suporte padrão'
 ];
 
 // Criar sessão de checkout
