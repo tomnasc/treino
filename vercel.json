@@ -3,11 +3,6 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "devCommand": "npm run dev",
-  "functions": {
-    "api/**/*.ts": {
-      "memory": 1024
-    }
-  },
   "headers": [
     {
       "source": "/manifest.json",
