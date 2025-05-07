@@ -165,6 +165,12 @@ export default function EditWorkoutPage({ params }: EditWorkoutPageProps) {
     )
   }
 
+  // Criar uma versão do workout com is_public como boolean definido
+  const workoutForForm = {
+    ...workout,
+    is_public: workout.is_public === false ? false : true
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -194,7 +200,7 @@ export default function EditWorkoutPage({ params }: EditWorkoutPageProps) {
         <TabsContent value="info" className="mt-6">
           <div className="rounded-lg border p-6">
             <WorkoutForm 
-              workout={workout} 
+              workout={workoutForForm} 
               onSubmit={handleUpdateWorkout} 
               isLoading={isSaving} 
             />
