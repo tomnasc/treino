@@ -370,3 +370,4 @@ export type Exercise = Database['public']['Tables']['exercises']['Row'] & {
 export type MuscleGroup = Database['public']['Tables']['muscle_groups']['Row']
 export type TrainingGoal = Database['public']['Tables']['training_goals']['Row']
 export type WorkoutExercise = Database['public']['Tables']['workout_exercises']['Row']
+export type AISettings = Database['public']['Tables']['ai_settings']['Row']
