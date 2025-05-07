@@ -1,6 +1,6 @@
 {
   "name": "Treino na Mão",
-  "short_name": "Treino",
+  "short_name": "Treino na Mão",
   "description": "Aplicativo de gerenciamento de treinos de academia",
   "start_url": "/dashboard",
   "display": "standalone",
