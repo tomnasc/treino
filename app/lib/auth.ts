@@ -144,15 +144,15 @@ async function createProfileForUser(userId: string, email: string) {
       if (error) {
         console.error('Erro ao criar perfil via RPC:', error);
         
-        // Fallback: inserção direta com tipagem ignorada
+        // Fallback: inserção direta
         try {
+          const defaultRole: UserRole = 'free';
           await supabase
             .from('profiles')
             .insert({
               id: userId,
               email: email,
-              // @ts-ignore - Ignorar erro de tipo
-              role: 'free',
+              role: defaultRole,
               created_at: new Date().toISOString()
             });
         } catch (insertError) {
@@ -231,10 +231,18 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     return null
   }
 
+  // Função para garantir que o valor de role seja um dos tipos válidos
+  const validateRole = (role: string | null): UserRole => {
+    if (role === 'free' || role === 'premium' || role === 'personal' || role === 'admin') {
+      return role;
+    }
+    return 'free'; // Valor padrão
+  };
+
   return {
     id: session.user.id,
     email: session.user.email || '',
-    role: (profile as Profile).role || 'free',
+    role: validateRole((profile as Profile).role),
     fullName: (profile as Profile).full_name || undefined,
     avatarUrl: (profile as Profile).avatar_url || undefined,
     personalId: (profile as Profile).personal_id || undefined,
