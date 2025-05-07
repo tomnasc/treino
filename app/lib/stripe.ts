@@ -23,22 +23,22 @@ export const subscriptionPlans = [
       'Análises avançadas de progresso',
       'Suporte prioritário'
     ],
-    price: 'R$ 19,90',
+    price: 'R$ 6,97',
     interval: 'month',
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_MENSAL
   },
   {
     id: 'price_anual',
     name: 'Plano Anual',
-    description: 'Economize 20% com o plano anual',
+    description: 'Economize com o plano anual',
     features: [
       'Geração ilimitada de treinos com IA',
       'Treinos personalizados exclusivos',
       'Análises avançadas de progresso',
       'Suporte prioritário',
-      'Economia de 20% em relação ao plano mensal'
+      'Economia significativa em relação ao plano mensal'
     ],
-    price: 'R$ 199,90',
+    price: 'R$ 66,90',
     interval: 'year',
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ANUAL
   }
