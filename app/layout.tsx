@@ -35,11 +35,11 @@ export const metadata: Metadata = {
       { url: '/favicon.ico', sizes: 'any' },
       { url: '/favicon-16.png', sizes: '16x16' },
       { url: '/favicon-32.png', sizes: '32x32' },
-      { url: '/icons/app-icon-192.png', sizes: '192x192' },
-      { url: '/icons/app-icon-512.png', sizes: '512x512' }
+      { url: '/icons/real/icon-192x192.png', sizes: '192x192' },
+      { url: '/icons/real/icon-512x512.png', sizes: '512x512' }
     ],
     apple: [
-      { url: '/icons/app-icon-192.png' }
+      { url: '/icons/real/icon-192x192.png' }
     ]
   }
 }
@@ -59,14 +59,14 @@ export default function RootLayout({
         <meta name="application-name" content="Treino na Mão" />
         <meta name="msapplication-TileColor" content="#3B82F6" />
         <meta name="theme-color" content="#3B82F6" />
-        <link rel="apple-touch-icon" href="/icons/app-icon-192.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/app-icon-192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/icons/app-icon-512.png" />
+        <link rel="apple-touch-icon" href="/icons/real/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icons/real/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/icons/real/icon-512x512.png" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
         <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
-        <link rel="icon" href="/icons/app-icon-192.png" sizes="192x192" type="image/png" />
-        <link rel="icon" href="/icons/app-icon-512.png" sizes="512x512" type="image/png" />
+        <link rel="icon" href="/icons/real/icon-192x192.png" sizes="192x192" type="image/png" />
+        <link rel="icon" href="/icons/real/icon-512x512.png" sizes="512x512" type="image/png" />
       </head>
       <body className={inter.className}>
         <ThemeProvider
