@@ -59,6 +59,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   const [currentSetIndex, setCurrentSetIndex] = useState(0)
   const [isResting, setIsResting] = useState(false)
   const [restTimeLeft, setRestTimeLeft] = useState(0)
+  const [restEndTime, setRestEndTime] = useState<number | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [workoutDuration, setWorkoutDuration] = useState(0)
   const [workoutStartTime] = useState(new Date())
@@ -68,6 +69,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   const [showRemainingExercises, setShowRemainingExercises] = useState(false)
   const [exerciseTimeLeft, setExerciseTimeLeft] = useState(0)
   const [isExerciseTimerRunning, setIsExerciseTimerRunning] = useState(false)
+  const [exerciseEndTime, setExerciseEndTime] = useState<number | null>(null)
   const [isButtonEnabled, setIsButtonEnabled] = useState(false)
 
   // Ref para armazenar valores dos inputs como backup
@@ -388,19 +390,33 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   useEffect(() => {
     let timer: NodeJS.Timeout
 
-    if (isResting && restTimeLeft > 0 && !isPaused) {
-      timer = setTimeout(() => {
-        setRestTimeLeft(prev => prev - 1)
-      }, 1000)
-    } else if (isResting && restTimeLeft === 0) {
-      setIsResting(false)
-      playSound('rest-complete')
+    if (isResting && !isPaused) {
+      // Inicializar o tempo de término apenas se ainda não estiver definido
+      if (restEndTime === null && restTimeLeft > 0) {
+        const endTimeMs = Date.now() + restTimeLeft * 1000;
+        setRestEndTime(endTimeMs);
+      }
+      
+      timer = setInterval(() => {
+        if (restEndTime !== null) {
+          const now = Date.now();
+          const remaining = Math.max(0, Math.floor((restEndTime - now) / 1000));
+          
+          setRestTimeLeft(remaining);
+          
+          if (remaining <= 0) {
+            setIsResting(false);
+            setRestEndTime(null);
+            playSound('rest-complete');
+          }
+        }
+      }, 500) // Verificar a cada meio segundo para maior precisão
     }
 
     return () => {
-      if (timer) clearTimeout(timer)
+      if (timer) clearInterval(timer)
     }
-  }, [isResting, restTimeLeft, isPaused])
+  }, [isResting, isPaused, restEndTime])
 
   // Timer para a duração total do treino
   useEffect(() => {
@@ -444,6 +460,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   const startRest = () => {
     const restTime = currentExercise.rest_time || 60
     setRestTimeLeft(restTime)
+    setRestEndTime(null) // Limpar o tempo de término anterior
     setIsResting(true)
   }
 
@@ -655,7 +672,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
   const handleSkipRest = () => {
     setIsResting(false)
-    setRestTimeLeft(0)
+    setRestEndTime(null)
   }
 
   const handleSkipExercise = async () => {
@@ -671,7 +688,17 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   }
 
   const togglePause = () => {
-    setIsPaused(prev => !prev)
+    setIsPaused(prev => {
+      const newPausedState = !prev;
+      
+      // Se estiver saindo do modo pausado (voltando a contar)
+      if (isResting && prev && !newPausedState && restTimeLeft > 0) {
+        // Recalcular o tempo de término baseado no tempo restante
+        setRestEndTime(Date.now() + restTimeLeft * 1000);
+      }
+      
+      return newPausedState;
+    })
   }
 
   const saveExerciseHistory = async (exerciseId: string) => {
@@ -1073,9 +1100,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     if (exerciseType === 'time') {
       const timeInSeconds = parseInt(currentExercise.time || '0');
       setExerciseTimeLeft(timeInSeconds);
-      
-      // Não iniciar automaticamente
-      setIsExerciseTimerRunning(false);
+      setExerciseEndTime(Date.now() + timeInSeconds * 1000);
+      setIsExerciseTimerRunning(true);
       setIsPaused(false);
     }
   }, [currentExercise, currentSetIndex]);
@@ -1083,6 +1109,9 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   // Função para iniciar o timer do exercício
   const startExerciseTimer = () => {
     if (exerciseType === 'time') {
+      const timeInSeconds = parseInt(currentExercise.time || '0');
+      setExerciseTimeLeft(timeInSeconds);
+      setExerciseEndTime(Date.now() + timeInSeconds * 1000);
       setIsExerciseTimerRunning(true);
       setIsPaused(false);
       setIsButtonEnabled(false);
@@ -1164,25 +1193,44 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
-    if (exerciseType === 'time' && isExerciseTimerRunning && exerciseTimeLeft > 0 && !isPaused) {
-      timer = setTimeout(() => {
-        setExerciseTimeLeft(prev => {
+    if (exerciseType === 'time' && isExerciseTimerRunning && !isPaused) {
+      // Usar setInterval para melhor precisão e funcionamento em segundo plano
+      timer = setInterval(() => {
+        if (exerciseEndTime !== null) {
+          const now = Date.now();
+          const remaining = Math.max(0, Math.floor((exerciseEndTime - now) / 1000));
+          
+          setExerciseTimeLeft(remaining);
+          
           // Quando chegar a zero, habilitar o botão de concluir
-          if (prev <= 1) {
+          if (remaining <= 0) {
             setIsExerciseTimerRunning(false);
             setIsButtonEnabled(true);
             playSound('set-complete');
-            return 0;
+            clearInterval(timer);
           }
-          return prev - 1;
-        });
-      }, 1000);
+        }
+      }, 500);
     }
     
     return () => {
-      if (timer) clearTimeout(timer);
+      if (timer) clearInterval(timer);
     };
-  }, [exerciseType, isExerciseTimerRunning, exerciseTimeLeft, isPaused]);
+  }, [exerciseType, isExerciseTimerRunning, isPaused, exerciseEndTime]);
+  
+  // Atualizar o tempo de término quando pausar/despausar o exercício
+  useEffect(() => {
+    if (exerciseType === 'time' && isExerciseTimerRunning) {
+      if (isPaused) {
+        // Quando pausar, salvar o tempo restante
+        console.log("Exercício pausado com", exerciseTimeLeft, "segundos restantes");
+      } else if (exerciseTimeLeft > 0) {
+        // Quando despausar, calcular novo tempo de término
+        setExerciseEndTime(Date.now() + exerciseTimeLeft * 1000);
+        console.log("Exercício retomado, novo tempo de término em", exerciseTimeLeft, "segundos");
+      }
+    }
+  }, [isPaused, exerciseType, isExerciseTimerRunning, exerciseTimeLeft]);
 
   // Verificar se o input de repetições foi preenchido
   useEffect(() => {
@@ -1197,6 +1245,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     if (exerciseType === 'time') {
       const timeInSeconds = parseInt(currentExercise.time || '0');
       setExerciseTimeLeft(timeInSeconds);
+      setExerciseEndTime(null);
       setIsExerciseTimerRunning(false);
       setIsPaused(false);
       setIsButtonEnabled(false);
