@@ -36,12 +36,19 @@ import { useToast } from "@/app/hooks/use-toast"
 import { supabase } from "@/app/lib/supabase"
 import { Exercise, MuscleGroup } from "@/app/types/database.types"
 
+// Tipo estendido para incluir os dados do grupo muscular
+interface ExerciseWithMuscleGroup extends Exercise {
+  muscle_group?: {
+    name: string;
+  };
+}
+
 const exerciseFormSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   description: z.string().optional(),
   muscle_group_id: z.string().min(1, "Selecione um grupo muscular"),
   youtube_url: z.string().url("URL inválida").optional().or(z.literal("")),
-  is_public: z.boolean().default(true),
+  is_public: z.boolean(),
 })
 
 type ExerciseFormValues = z.infer<typeof exerciseFormSchema>
@@ -51,13 +58,13 @@ interface ExerciseManagerProps {
 }
 
 export function ExerciseManager({ userId }: ExerciseManagerProps) {
-  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [exercises, setExercises] = useState<ExerciseWithMuscleGroup[]>([])
   const [muscleGroups, setMuscleGroups] = useState<MuscleGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [showAddDialog, setShowAddDialog] = useState(false)
-  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null)
-  const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null)
+  const [editingExercise, setEditingExercise] = useState<ExerciseWithMuscleGroup | null>(null)
+  const [exerciseToDelete, setExerciseToDelete] = useState<ExerciseWithMuscleGroup | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
@@ -122,12 +129,12 @@ export function ExerciseManager({ userId }: ExerciseManagerProps) {
     return (
       exercise.name.toLowerCase().includes(searchTerm) ||
       (exercise.description && exercise.description.toLowerCase().includes(searchTerm)) ||
-      (exercise.muscle_group && (exercise.muscle_group as any).name.toLowerCase().includes(searchTerm))
+      (exercise.muscle_group && exercise.muscle_group.name.toLowerCase().includes(searchTerm))
     )
   })
 
   // Abrir diálogo para editar exercício
-  const handleEdit = (exercise: Exercise) => {
+  const handleEdit = (exercise: ExerciseWithMuscleGroup) => {
     setEditingExercise(exercise)
     
     form.reset({
@@ -135,7 +142,7 @@ export function ExerciseManager({ userId }: ExerciseManagerProps) {
       description: exercise.description || "",
       muscle_group_id: exercise.muscle_group_id || "",
       youtube_url: exercise.youtube_url || "",
-      is_public: exercise.is_public || false,
+      is_public: exercise.is_public === false ? false : true,
     })
     
     setShowAddDialog(true)
@@ -274,13 +281,13 @@ export function ExerciseManager({ userId }: ExerciseManagerProps) {
   }
 
   // Obter o nome do grupo muscular
-  const getMuscleGroupName = (exercise: Exercise) => {
+  const getMuscleGroupName = (exercise: ExerciseWithMuscleGroup) => {
     if (exercise.muscle_group) {
-      return (exercise.muscle_group as any).name
+      return exercise.muscle_group.name
     }
     
     const group = muscleGroups.find(g => g.id === exercise.muscle_group_id)
-    return group ? group.name : "Não definido"
+    return group ? group.name : "Desconhecido"
   }
 
   return (
