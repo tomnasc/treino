@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Download, Wifi, Clock, Dumbbell } from "lucide-react"
+import { ArrowRight, Download, Wifi, Clock, Dumbbell, UserPlus, CheckCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/app/components/ui/button"
 
@@ -126,6 +126,85 @@ export default function Home() {
                 className="inline-flex items-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
               >
                 Comece agora
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Nova seção para Personal Trainers */}
+        <section className="w-full py-12 bg-muted">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center text-center space-y-4 mb-8">
+              <UserPlus className="h-12 w-12 text-primary" />
+              <h2 className="text-2xl font-bold tracking-tight">Para Personal Trainers</h2>
+              <p className="text-muted-foreground max-w-[700px]">
+                Profissionais certificados podem solicitar acesso à nossa plataforma exclusiva para Personal Trainers.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <div className="bg-background p-6 rounded-lg border">
+                <h3 className="text-xl font-medium mb-4">Benefícios Exclusivos</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Acesso a todos os recursos premium sem custo adicional</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Gerenciamento de múltiplos alunos</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Criação de treinos personalizados para alunos</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Acompanhamento de progresso e desempenho de alunos</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Sem limite de treinos cadastrados</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="bg-background p-6 rounded-lg border">
+                <h3 className="text-xl font-medium mb-4">Como se Tornar um Personal no Aplicativo</h3>
+                <ol className="space-y-4 list-decimal list-inside">
+                  <li className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Registre-se</span>
+                    <p className="mt-1 pl-6">Crie uma conta no aplicativo normalmente</p>
+                  </li>
+                  <li className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Envie sua documentação</span>
+                    <p className="mt-1 pl-6">Entre em contato com o administrador através da seção de configurações</p>
+                  </li>
+                  <li className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Verificação</span>
+                    <p className="mt-1 pl-6">Sua certificação profissional e documentos serão avaliados</p>
+                  </li>
+                  <li className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Aprovação</span>
+                    <p className="mt-1 pl-6">Após aprovação, seu perfil será atualizado para Personal Trainer com todos os benefícios</p>
+                  </li>
+                </ol>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg mt-8 p-4 max-w-4xl mx-auto">
+              <p className="text-sm text-center text-amber-800 dark:text-amber-300">
+                <span className="font-bold">Importante:</span> Personal Trainers recebem automaticamente todos os benefícios de um usuário Premium, sem a necessidade de assinatura.
+              </p>
+            </div>
+
+            <div className="flex justify-center mt-8">
+              <Link 
+                href="/register"
+                className="inline-flex items-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+              >
+                Registrar como Personal
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </div>

@@ -324,6 +324,46 @@ export default function SettingsPage() {
         </Button>
       </div>
 
+      {/* Seção para se tornar um Personal Trainer */}
+      {user?.role !== 'personal' && user?.role !== 'admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Seja um Personal Trainer</CardTitle>
+            <CardDescription>
+              Profissionais certificados podem solicitar acesso às funcionalidades exclusivas para personal trainers.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="bg-muted p-4 rounded-md">
+              <h3 className="font-medium mb-2">Benefícios para Personal Trainers:</h3>
+              <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                <li>Acesso a todos os recursos premium sem custo adicional</li>
+                <li>Gerenciamento de múltiplos alunos</li>
+                <li>Criação de treinos personalizados para alunos</li>
+                <li>Acompanhamento detalhado do progresso dos alunos</li>
+                <li>Sem limite de treinos cadastrados</li>
+              </ul>
+            </div>
+            
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-md text-sm text-amber-800 dark:text-amber-300">
+              <p>
+                <span className="font-medium">Nota importante:</span> Para se tornar um personal trainer, 
+                você precisa ser um profissional certificado. Será necessário enviar sua documentação 
+                para validação pelos administradores.
+              </p>
+            </div>
+            
+            <div className="flex justify-end">
+              <Link href="mailto:admin@treinonamao.com?subject=Solicitação para Personal Trainer&body=Olá, gostaria de solicitar acesso como Personal Trainer no aplicativo Treino na Mão. Segue abaixo minhas informações:%0D%0A%0D%0ANome completo:%0D%0AEmail cadastrado no app:%0D%0ARegistro profissional:%0D%0A%0D%0AAguardo retorno.">
+                <Button className="inline-flex items-center">
+                  Solicitar acesso como Personal
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Seção de Administração - visível apenas para admins */}
       {user?.role === "admin" && (
         <Card className="border-2 border-primary/20">

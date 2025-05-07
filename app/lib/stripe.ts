@@ -57,6 +57,16 @@ export const freeUserLimitations = [
   'Perda de acesso a personals ao cancelar assinatura'
 ];
 
+// Define os benefícios para personal trainers
+export const personalTrainerBenefits = [
+  'Acesso a todos os recursos premium sem custo adicional',
+  'Gerenciamento de múltiplos alunos',
+  'Criação de treinos personalizados para alunos',
+  'Acompanhamento detalhado do progresso dos alunos',
+  'Sem limite de treinos cadastrados',
+  'Recursos exclusivos para profissionais'
+];
+
 // Criar sessão de checkout
 export const createCheckoutSession = async (
   customerId: string, 
