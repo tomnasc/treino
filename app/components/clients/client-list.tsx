@@ -185,6 +185,9 @@ export function ClientList({
                   <p className="mt-1">
                     Apenas usuários com plano Premium podem ser adicionados como alunos. Usuários gratuitos precisam fazer upgrade.
                   </p>
+                  <p className="mt-2 text-amber-700 dark:text-amber-400">
+                    <span className="font-medium">Nota:</span> Se um cliente cancelar sua assinatura premium, ele será automaticamente removido da sua lista de alunos.
+                  </p>
                 </div>
               </div>
             </div>

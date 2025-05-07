@@ -69,6 +69,11 @@ export function SubscriptionPlans({
               </li>
             ))}
           </ul>
+          <div className="mt-4 p-3 border rounded-md bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              <span className="font-medium">Importante:</span> Se você cancelar sua assinatura premium, perderá acesso aos serviços de personal trainer imediatamente.
+            </p>
+          </div>
         </CardContent>
         <CardFooter>
           <Button 

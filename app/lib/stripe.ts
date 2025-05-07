@@ -53,7 +53,8 @@ export const freeUserLimitations = [
   'Limite de 3 treinos cadastrados',
   'Não pode ser cliente de personal trainers',
   'Funcionalidades avançadas de IA limitadas',
-  'Suporte padrão'
+  'Suporte padrão',
+  'Perda de acesso a personals ao cancelar assinatura'
 ];
 
 // Criar sessão de checkout
