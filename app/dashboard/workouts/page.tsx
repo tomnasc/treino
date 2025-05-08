@@ -3,13 +3,17 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Plus, Search, Filter, ArrowUpDown } from "lucide-react"
+import { Plus, Search, Filter, ArrowUpDown, ListOrdered } from "lucide-react"
 
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { getCurrentUser, UserSession } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
 import { Workout } from "@/app/types/database.types"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui/sheet"
+import { WorkoutSequenceEditor } from "@/app/components/workouts/workout-sequence-editor"
+
+type SortOrderType = 'asc' | 'desc' | 'seq';
 
 export default function WorkoutsPage() {
   const router = useRouter()
@@ -17,38 +21,41 @@ export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [sortOrder, setSortOrder] = useState<SortOrderType>('desc')
+  const [isReorderSheetOpen, setIsReorderSheetOpen] = useState(false)
+
+  async function fetchWorkouts() {
+    try {
+      setIsLoading(true)
+      const currentUser = await getCurrentUser()
+      if (!currentUser) {
+        router.push("/login")
+        return
+      }
+      setUser(currentUser)
+
+      const { data, error } = await supabase
+        .from("workouts")
+        .select("*")
+        .eq("created_by", currentUser.id)
+        .order(sortOrder === 'seq' ? 'sequence_order' : 'created_at', { 
+          ascending: sortOrder === 'asc' || sortOrder === 'seq'
+        })
+
+      if (error) {
+        console.error("Erro ao buscar treinos:", error)
+      } else {
+        setWorkouts(data || [])
+      }
+    } catch (error) {
+      console.error("Erro:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true)
-        const currentUser = await getCurrentUser()
-        if (!currentUser) {
-          router.push("/login")
-          return
-        }
-        setUser(currentUser)
-
-        const { data, error } = await supabase
-          .from("workouts")
-          .select("*")
-          .eq("created_by", currentUser.id)
-          .order("created_at", { ascending: sortOrder === 'asc' })
-
-        if (error) {
-          console.error("Erro ao buscar treinos:", error)
-        } else {
-          setWorkouts(data || [])
-        }
-      } catch (error) {
-        console.error("Erro:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData()
+    fetchWorkouts()
   }, [router, sortOrder])
 
   const filteredWorkouts = workouts.filter(workout => 
@@ -57,7 +64,26 @@ export default function WorkoutsPage() {
   )
 
   const toggleSortOrder = () => {
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    setSortOrder(prev => {
+      // Rotaciona entre 'desc', 'asc' e 'seq'
+      if (prev === 'desc') return 'asc'
+      if (prev === 'asc') return 'seq'
+      return 'desc'
+    })
+  }
+
+  const handleReorderComplete = () => {
+    setIsReorderSheetOpen(false)
+    fetchWorkouts()
+  }
+
+  const getSortLabel = () => {
+    switch (sortOrder) {
+      case 'desc': return 'Mais novos'
+      case 'asc': return 'Mais antigos'
+      case 'seq': return 'Sequência'
+      default: return 'Ordenar'
+    }
   }
 
   return (
@@ -86,8 +112,32 @@ export default function WorkoutsPage() {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={toggleSortOrder}>
             <ArrowUpDown className="mr-2 h-4 w-4" />
-            {sortOrder === 'asc' ? 'Mais novos' : 'Mais antigos'}
+            {getSortLabel()}
           </Button>
+          
+          <Sheet open={isReorderSheetOpen} onOpenChange={setIsReorderSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <ListOrdered className="mr-2 h-4 w-4" />
+                Reordenar
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle>Reordenar Treinos</SheetTitle>
+                <SheetDescription>
+                  Defina a ordem de execução dos seus treinos arrastando-os para a posição desejada.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6">
+                <WorkoutSequenceEditor 
+                  workouts={workouts} 
+                  onSave={handleReorderComplete} 
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+          
           <Button asChild>
             <Link href="/dashboard/workouts/new">
               <Plus className="mr-2 h-4 w-4" />

@@ -33,10 +33,20 @@ export default function DashboardPage() {
           console.error("Erro ao carregar treinos:", workoutsError)
         } else {
           setRecentWorkouts(workoutsData)
-          // Vamos usar o primeiro treino como "próximo treino" por enquanto
-          if (workoutsData.length > 0) {
-            setUpcomingWorkout(workoutsData[0])
+        }
+        
+        // Obter o próximo treino usando a nova função
+        try {
+          const { data: nextWorkoutData, error: nextWorkoutError } = await supabase
+            .rpc('get_next_workout', { user_id: currentUser.id })
+            
+          if (nextWorkoutError) {
+            console.error("Erro ao obter próximo treino:", nextWorkoutError)
+          } else if (nextWorkoutData && nextWorkoutData.length > 0) {
+            setUpcomingWorkout(nextWorkoutData[0])
           }
+        } catch (err) {
+          console.error("Erro ao obter próximo treino:", err)
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error)

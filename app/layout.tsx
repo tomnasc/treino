@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/app/components/theme-provider'
-import { Toaster } from '@/app/components/ui/toaster'
+import { ToastProvider } from '@/app/components/ui/use-toast'
 import { PWARegister } from '@/app/components/pwa-register'
 
 const inter = Inter({ 
@@ -142,7 +142,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
-          <Toaster />
+          <ToastProvider>{children}</ToastProvider>
           <PWARegister />
         </ThemeProvider>
       </body>

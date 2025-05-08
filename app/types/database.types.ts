@@ -316,6 +316,8 @@ export interface Database {
           is_public: boolean | null
           name: string
           updated_at: string | null
+          is_featured: boolean | null
+          sequence_order: number | null
         }
         Insert: {
           created_at?: string | null
@@ -327,6 +329,8 @@ export interface Database {
           is_public?: boolean | null
           name: string
           updated_at?: string | null
+          is_featured?: boolean | null
+          sequence_order?: number | null
         }
         Update: {
           created_at?: string | null
@@ -338,6 +342,8 @@ export interface Database {
           is_public?: boolean | null
           name?: string
           updated_at?: string | null
+          is_featured?: boolean | null
+          sequence_order?: number | null
         }
         Relationships: {
           creator: {
