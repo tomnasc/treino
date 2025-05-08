@@ -73,6 +73,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   const [isExerciseTimerRunning, setIsExerciseTimerRunning] = useState(false)
   const [exerciseEndTime, setExerciseEndTime] = useState<number | null>(null)
   const [isButtonEnabled, setIsButtonEnabled] = useState(false)
+  const [showPendingExercisesDialog, setShowPendingExercisesDialog] = useState(false)
+  const [pendingExercisesList, setPendingExercisesList] = useState<(WorkoutExercise & { exercise: Exercise })[]>([])
 
   // Ref para armazenar valores dos inputs como backup
   const inputValuesRef = useRef<Record<string, string>>({});
@@ -966,43 +968,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     const pendingExercises = checkPendingExercises()
     
     if (pendingExercises && pendingExercises.length > 0) {
-      // Mostrar alerta sobre exercícios pendentes
-      showToastOnce('pending-exercises', {
-        title: "Exercícios pendentes",
-        description: `Você ainda tem ${pendingExercises.length} exercício(s) pendente(s). Deseja realmente finalizar o treino?`,
-        variant: "destructive",
-        action: (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm">Ver pendentes</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Exercícios pendentes</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Os seguintes exercícios ainda não foram concluídos:
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="py-4 max-h-[300px] overflow-y-auto">
-                <ul className="space-y-2">
-                  {pendingExercises.map((exercise, index) => (
-                    <li key={exercise.id} className="flex justify-between items-center p-2 rounded-md hover:bg-accent">
-                      <span>{exercise.exercise.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Voltar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => finishWorkoutForcefully()}>
-                  Finalizar mesmo assim
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ),
-      })
-      return
+      // Armazenar a lista de exercícios pendentes no estado
+      setPendingExercisesList(pendingExercises);
+      
+      // Mostrar o diálogo de exercícios pendentes diretamente
+      setShowPendingExercisesDialog(true);
+      return;
     }
     
     // Se não houver exercícios pendentes, finalizar normalmente
@@ -1303,6 +1274,35 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={showPendingExercisesDialog} onOpenChange={setShowPendingExercisesDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Exercícios pendentes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Os seguintes exercícios ainda não foram concluídos:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4 max-h-[300px] overflow-y-auto">
+            <ul className="space-y-2">
+              {pendingExercisesList.map((exercise) => (
+                <li key={exercise.id} className="flex justify-between items-center p-2 rounded-md hover:bg-accent">
+                  <span>{exercise.exercise.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowPendingExercisesDialog(false)}>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowPendingExercisesDialog(false);
+              finishWorkoutForcefully();
+            }}>
+              Finalizar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">{workout.name}</h2>
         <div className="flex items-center text-sm text-muted-foreground">
