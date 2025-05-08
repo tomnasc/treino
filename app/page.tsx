@@ -8,9 +8,49 @@ import { Button } from "@/app/components/ui/button"
 export default function Home() {
   const [isInstallable, setIsInstallable] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [isIOS, setIsIOS] = useState(false)
+  const [isIOSPWA, setIsIOSPWA] = useState(false)
+  const [showIOSInstall, setShowIOSInstall] = useState(false)
+  const [showIOSBanner, setShowIOSBanner] = useState(true)
 
   useEffect(() => {
-    // Detecta se o aplicativo é instalável
+    // Garantir que o código execute apenas no cliente
+    if (typeof window === 'undefined') return
+    
+    // Verificar se o usuário já dispensou o banner anteriormente
+    const hasUserDismissedBanner = localStorage.getItem('pwa-ios-banner-dismissed')
+    if (hasUserDismissedBanner === 'true') {
+      setShowIOSBanner(false)
+    }
+    
+    // Detectar se é um dispositivo iOS
+    const userAgent = navigator.userAgent || ''
+    // Safari no iPad mais recente pode se mostrar como Mac
+    const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream
+    const isPossibleIPad = 
+      /Mac/.test(userAgent) && 
+      navigator.maxTouchPoints > 1 && 
+      typeof window.orientation !== 'undefined'
+    
+    setIsIOS(isIOSDevice || isPossibleIPad)
+    
+    // Verificar se já está instalado como PWA em iOS
+    let isInStandaloneMode = false
+    try {
+      isInStandaloneMode = 
+        ('matchMedia' in window && window.matchMedia('(display-mode: standalone)').matches) || 
+        !!(window.navigator as any).standalone || 
+        !!(document.referrer && document.referrer.includes('ios-app://'))
+    } catch (e) {
+      console.error('Erro ao verificar modo standalone:', e)
+    }
+    
+    setIsIOSPWA(isInStandaloneMode)
+    
+    // Mostrar botão para iOS apenas se for iOS e não estiver em modo standalone
+    setShowIOSInstall(false) // Não mostrar imediatamente, deixar o usuário clicar no botão
+
+    // Detecta se o aplicativo é instalável em outros navegadores (não iOS)
     const handleBeforeInstallPrompt = (e: Event) => {
       // Previne que o navegador mostre automaticamente o diálogo de instalação
       e.preventDefault()
@@ -20,10 +60,14 @@ export default function Home() {
       setIsInstallable(true)
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as any)
+    if ('addEventListener' in window) {
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as any)
+    }
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as any)
+      if ('removeEventListener' in window) {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as any)
+      }
     }
   }, [])
 
@@ -47,8 +91,49 @@ export default function Home() {
     setIsInstallable(false)
   }
 
+  // Função para abrir modal de instruções para iOS
+  const handleIOSInstallClick = () => {
+    setShowIOSInstall(true)
+  }
+  
+  // Função para dispensar o banner de iOS
+  const dismissIOSBanner = () => {
+    setShowIOSBanner(false)
+    // Salvar a preferência do usuário para não mostrar mais
+    try {
+      localStorage.setItem('pwa-ios-banner-dismissed', 'true')
+    } catch (e) {
+      console.error('Erro ao salvar preferência:', e)
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
+      {isIOS && !isIOSPWA && showIOSBanner && (
+        <div className="sticky top-0 z-50 bg-primary p-3 text-primary-foreground text-center text-sm">
+          <div className="flex items-center justify-center">
+            <Download className="h-4 w-4 mr-2" />
+            <span>Instale o app para uma melhor experiência</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="ml-3 h-7 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+              onClick={handleIOSInstallClick}
+            >
+              Instalar
+            </Button>
+            <button 
+              onClick={dismissIOSBanner} 
+              className="ml-2 p-1 rounded-full hover:bg-primary-foreground/10"
+              aria-label="Fechar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-background to-muted">
           <div className="container px-4 md:px-6">
@@ -85,6 +170,69 @@ export default function Home() {
                   <Download className="mr-2 h-4 w-4" />
                   Instalar aplicativo
                 </Button>
+              )}
+              
+              {isIOS && !isIOSPWA && (
+                <Button 
+                  onClick={handleIOSInstallClick}
+                  className="mt-4"
+                  variant="outline"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Instalar no iPhone/iPad
+                </Button>
+              )}
+              
+              {showIOSInstall && (
+                <div className="mt-6 p-6 bg-muted rounded-lg max-w-md mx-auto text-left border border-primary/20 shadow-lg">
+                  <h3 className="font-bold text-lg mb-3">Instalar no seu iPhone/iPad:</h3>
+                  <ol className="space-y-4 pl-5 list-decimal">
+                    <li className="text-sm md:text-base">
+                      Toque no botão de compartilhamento 
+                      <span className="inline-block mx-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded text-blue-600 dark:text-blue-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                          <polyline points="16 6 12 2 8 6"></polyline>
+                          <line x1="12" y1="2" x2="12" y2="15"></line>
+                        </svg>
+                      </span> 
+                      na barra inferior do Safari
+                    </li>
+                    <li className="text-sm md:text-base">
+                      Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>
+                      <div className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded flex items-center">
+                        <span className="inline-block mr-2 p-1 bg-white dark:bg-gray-700 rounded-md">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 5v14M5 12h14"></path>
+                          </svg>
+                        </span>
+                        <span>Adicionar à Tela de Início</span>
+                      </div>
+                    </li>
+                    <li className="text-sm md:text-base">
+                      Toque em <strong>"Adicionar"</strong> no canto superior direito
+                    </li>
+                  </ol>
+                  <p className="mt-4 text-xs text-muted-foreground">
+                    Após a instalação, o aplicativo funcionará em tela cheia e também estará disponível offline.
+                  </p>
+                  <div className="flex space-x-3 mt-5">
+                    <Button 
+                      onClick={() => setShowIOSInstall(false)}
+                      className="flex-1"
+                      variant="default"
+                    >
+                      Entendi
+                    </Button>
+                    <Button 
+                      onClick={() => setShowIOSInstall(false)}
+                      className="flex-1" 
+                      variant="outline"
+                    >
+                      Mais tarde
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           </div>

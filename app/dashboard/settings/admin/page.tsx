@@ -376,67 +376,73 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="container py-10 space-y-6">
+    <div className="px-4 py-10 space-y-6 max-w-full">
       <h1 className="text-3xl font-bold">Painel do Administrador</h1>
       <p className="text-muted-foreground">
         Gerencie usuários, conteúdo e configurações do sistema.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Link href="/dashboard/settings/admin/sync-users" className="block no-underline">
           <Card className="h-full cursor-pointer transition-all hover:bg-accent/50">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <RefreshCw className="h-5 w-5 mr-2" />
-                <span>Sincronizar Usuários</span>
-              </CardTitle>
-              <CardDescription>
-                Sincronizar usuários com serviço externo
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center space-x-3 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+                <RefreshCw className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Sincronizar Usuários</CardTitle>
+                <CardDescription>
+                  Sincronizar usuários com serviço externo
+                </CardDescription>
+              </div>
             </CardHeader>
           </Card>
         </Link>
 
         <Link href="/dashboard/settings/admin/content-management" className="block no-underline">
           <Card className="h-full cursor-pointer transition-all hover:bg-accent/50">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Dumbbell className="h-5 w-5 mr-2" />
-                <span>Gestão de Conteúdo</span>
-              </CardTitle>
-              <CardDescription>
-                Exercícios padrão e treinos em destaque
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center space-x-3 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+                <Dumbbell className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Gestão de Conteúdo</CardTitle>
+                <CardDescription>
+                  Exercícios padrão e treinos em destaque
+                </CardDescription>
+              </div>
             </CardHeader>
           </Card>
         </Link>
 
         <Link href="/dashboard/settings/admin/database-migrations" className="block no-underline">
           <Card className="h-full cursor-pointer transition-all hover:bg-accent/50">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Database className="h-5 w-5 mr-2" />
-                <span>Migrações de Banco</span>
-              </CardTitle>
-              <CardDescription>
-                Aplicar migrações ao banco de dados
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center space-x-3 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+                <Database className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Migrações de Banco</CardTitle>
+                <CardDescription>
+                  Aplicar migrações ao banco de dados
+                </CardDescription>
+              </div>
             </CardHeader>
           </Card>
         </Link>
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-5">
           <CardTitle className="flex items-center">
-            <AlertCircle className="h-5 w-5 mr-2 text-amber-500" />
+            <AlertCircle className="h-6 w-6 mr-2 text-amber-500" />
             <span>Guia de Administração</span>
           </CardTitle>
           <CardDescription>
             Documentação das funcionalidades avançadas de gerenciamento de usuários
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-5 pb-5">
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="suspensao">
               <AccordionTrigger>
@@ -535,10 +541,10 @@ export default function AdminPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-5">
           <CardTitle>
             <div className="flex items-center space-x-2">
-              <Users className="h-5 w-5" />
+              <Users className="h-6 w-6 text-primary" />
               <span>Usuários</span>
             </div>
           </CardTitle>
@@ -546,7 +552,7 @@ export default function AdminPage() {
             Total de {users.length} usuários registrados no sistema
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-5 pb-5">
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 md:space-x-4 mb-4">
             <div className="relative w-full md:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

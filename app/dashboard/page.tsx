@@ -61,7 +61,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
+        <h2 className="text-2xl font-bold tracking-tight">
           {loading ? "Carregando..." : `Olá, ${user?.fullName || "treino na mão"}!`}
         </h2>
         <p className="text-muted-foreground">
@@ -74,14 +74,16 @@ export default function DashboardPage() {
           href="/dashboard/workouts"
           className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
-            <Dumbbell className="h-6 w-6 text-primary" />
-          </div>
-          <div className="mt-3 space-y-2">
-            <h3 className="font-medium">Meus Treinos</h3>
-            <p className="text-sm text-muted-foreground">
-              Gerencie seus treinos e crie novos
-            </p>
+          <div className="flex items-center space-x-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+              <Dumbbell className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">Meus Treinos</h3>
+              <p className="text-sm text-muted-foreground">
+                Gerencie seus treinos e crie novos
+              </p>
+            </div>
           </div>
           <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
         </Link>
@@ -90,14 +92,16 @@ export default function DashboardPage() {
           href="/dashboard/train"
           className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
-            <Activity className="h-6 w-6 text-primary" />
-          </div>
-          <div className="mt-3 space-y-2">
-            <h3 className="font-medium">Treinar Agora</h3>
-            <p className="text-sm text-muted-foreground">
-              Inicie uma sessão de treino
-            </p>
+          <div className="flex items-center space-x-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+              <Activity className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">Treinar Agora</h3>
+              <p className="text-sm text-muted-foreground">
+                Inicie uma sessão de treino
+              </p>
+            </div>
           </div>
           <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
         </Link>
@@ -106,14 +110,16 @@ export default function DashboardPage() {
           href="/dashboard/progress"
           className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
-            <Calendar className="h-6 w-6 text-primary" />
-          </div>
-          <div className="mt-3 space-y-2">
-            <h3 className="font-medium">Meu Progresso</h3>
-            <p className="text-sm text-muted-foreground">
-              Veja seu histórico e estatísticas
-            </p>
+          <div className="flex items-center space-x-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+              <Calendar className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">Meu Progresso</h3>
+              <p className="text-sm text-muted-foreground">
+                Veja seu histórico e estatísticas
+              </p>
+            </div>
           </div>
           <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
         </Link>
@@ -122,20 +128,62 @@ export default function DashboardPage() {
           href="/dashboard/achievements"
           className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
-            <Award className="h-6 w-6 text-primary" />
-          </div>
-          <div className="mt-3 space-y-2">
-            <h3 className="font-medium">Conquistas</h3>
-            <p className="text-sm text-muted-foreground">
-              Veja suas conquistas e medalhas
-            </p>
+          <div className="flex items-center space-x-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+              <Award className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">Conquistas</h3>
+              <p className="text-sm text-muted-foreground">
+                Veja suas conquistas e medalhas
+              </p>
+            </div>
           </div>
           <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
         </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Próximo Treino</h3>
+          
+          {loading ? (
+            <div className="flex h-[200px] items-center justify-center rounded-lg border">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+            </div>
+          ) : upcomingWorkout ? (
+            <div className="rounded-lg border p-6">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                <div>
+                  <h4 className="text-lg font-medium">{upcomingWorkout.name}</h4>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {upcomingWorkout.description || "Sem descrição"}
+                  </p>
+                </div>
+                
+                <Link
+                  href={`/dashboard/train?workout=${upcomingWorkout.id}`}
+                  className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 whitespace-nowrap"
+                >
+                  Iniciar Treino
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-[200px] flex-col items-center justify-center rounded-lg border p-8 text-center">
+              <p className="text-muted-foreground">
+                Nenhum treino planejado
+              </p>
+              <Link
+                href="/dashboard/workouts"
+                className="mt-4 text-sm text-primary hover:underline"
+              >
+                Escolher um treino
+              </Link>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold">Treinos Recentes</h3>
@@ -183,44 +231,6 @@ export default function DashboardPage() {
                 className="mt-4 text-sm text-primary hover:underline"
               >
                 Criar um treino
-              </Link>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold">Próximo Treino</h3>
-          
-          {loading ? (
-            <div className="flex h-[200px] items-center justify-center rounded-lg border">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-            </div>
-          ) : upcomingWorkout ? (
-            <div className="rounded-lg border p-6">
-              <h4 className="text-lg font-medium">{upcomingWorkout.name}</h4>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {upcomingWorkout.description || "Sem descrição"}
-              </p>
-              
-              <div className="mt-6">
-                <Link
-                  href={`/dashboard/train?workout=${upcomingWorkout.id}`}
-                  className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
-                >
-                  Iniciar Treino
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="flex h-[200px] flex-col items-center justify-center rounded-lg border p-8 text-center">
-              <p className="text-muted-foreground">
-                Nenhum treino planejado
-              </p>
-              <Link
-                href="/dashboard/workouts"
-                className="mt-4 text-sm text-primary hover:underline"
-              >
-                Escolher um treino
               </Link>
             </div>
           )}

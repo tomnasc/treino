@@ -152,35 +152,105 @@ export default function ProgressPage() {
         
         setMonthlyStats(sortedMonthly)
         
-        // Buscar estatísticas de exercícios (mock para exemplo)
-        // Em uma implementação real, você buscaria os dados do seu banco
-        setExerciseStats([
-          {
-            exercise_id: "1",
-            exercise_name: "Supino",
-            workout_count: 10,
-            set_count: 30,
-            average_weight: 60,
-            max_weight: 80
-          },
-          {
-            exercise_id: "2",
-            exercise_name: "Agachamento",
-            workout_count: 8,
-            set_count: 24,
-            average_weight: 80,
-            max_weight: 100
-          },
-          {
-            exercise_id: "3",
-            exercise_name: "Levantamento Terra",
-            workout_count: 6,
-            set_count: 18,
-            average_weight: 100,
-            max_weight: 120
-          }
-        ])
+        // Buscar estatísticas de exercícios
+        const { data: exerciseHistoryData, error: exerciseHistoryError } = await supabase
+          .from('exercise_history')
+          .select(`
+            id,
+            workout_history_id,
+            workout_exercise_id,
+            workout_exercise:workout_exercises(
+              id,
+              exercise_id,
+              exercise:exercises(id, name)
+            ),
+            actual_weight,
+            sets_completed
+          `)
+          .in('workout_history_id', workoutData?.map(w => w.id) || [])
         
+        if (exerciseHistoryError) {
+          console.error("Erro ao buscar histórico de exercícios:", exerciseHistoryError)
+        } else if (exerciseHistoryData) {
+          // Agrupar e calcular estatísticas por exercício
+          const exerciseStatsMap = new Map<string, ExerciseStat>()
+          
+          exerciseHistoryData.forEach(history => {
+            if (!history.workout_exercise || 
+                typeof history.workout_exercise !== 'object' || 
+                !('exercise' in history.workout_exercise) || 
+                !history.workout_exercise.exercise ||
+                typeof history.workout_exercise.exercise !== 'object') {
+              return
+            }
+            
+            const exercise = history.workout_exercise.exercise as { id: string; name: string }
+            const exerciseId = exercise.id
+            const exerciseName = exercise.name
+            
+            if (!exerciseStatsMap.has(exerciseId)) {
+              exerciseStatsMap.set(exerciseId, {
+                exercise_id: exerciseId,
+                exercise_name: exerciseName,
+                workout_count: 0,
+                set_count: 0,
+                average_weight: 0,
+                max_weight: 0
+              })
+            }
+            
+            const stat = exerciseStatsMap.get(exerciseId)!
+            stat.workout_count++
+            stat.set_count += history.sets_completed || 0
+            
+            // Processar pesos
+            if (history.actual_weight && typeof history.actual_weight === 'string') {
+              try {
+                // Convertendo o formato de peso para uma lista de valores numéricos
+                const weights = JSON.parse(history.actual_weight)
+                  .map((w: string | number) => typeof w === 'string' ? parseFloat(w) : w)
+                  .filter((w: number) => !isNaN(w)) // Filtrar valores não numéricos
+                
+                if (weights.length > 0) {
+                  const avgWeight = weights.reduce((sum: number, w: number) => sum + w, 0) / weights.length
+                  const maxWeight = Math.max(...weights)
+                  
+                  // Acumular para cálculo de média global
+                  stat.average_weight += avgWeight
+                  
+                  // Atualizar peso máximo se necessário
+                  if (maxWeight > stat.max_weight) {
+                    stat.max_weight = maxWeight
+                  }
+                }
+              } catch (e) {
+                // Se não for JSON válido, tenta converter diretamente
+                const weight = parseFloat(history.actual_weight)
+                if (!isNaN(weight)) {
+                  stat.average_weight += weight
+                  if (weight > stat.max_weight) {
+                    stat.max_weight = weight
+                  }
+                }
+              }
+            }
+          })
+          
+          // Calcular médias e preparar resultado final
+          const finalStats: ExerciseStat[] = []
+          
+          exerciseStatsMap.forEach(stat => {
+            if (stat.workout_count > 0) {
+              stat.average_weight = parseFloat((stat.average_weight / stat.workout_count).toFixed(1))
+              finalStats.push(stat)
+            }
+          })
+          
+          // Ordenar por nome do exercício
+          finalStats.sort((a, b) => a.exercise_name.localeCompare(b.exercise_name))
+          
+          setExerciseStats(finalStats)
+        }
       } catch (error) {
         console.error("Erro ao carregar dados:", error)
         toast({
