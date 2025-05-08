@@ -4,11 +4,9 @@ import { useState, useEffect } from "react"
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { Grip, Save } from "lucide-react"
 
-import { Button } from "@/app/components/ui/button"
-import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert"
+import { Button, Alert, AlertDescription, AlertTitle, useToast } from "@/app/components/ui"
 import { supabase } from "@/app/lib/supabase"
 import { Workout } from "@/app/types/database.types"
-import { toast } from "@/app/components/ui/use-toast"
 
 interface WorkoutSequenceEditorProps {
   workouts: Workout[]
@@ -19,6 +17,7 @@ export function WorkoutSequenceEditor({ workouts, onSave }: WorkoutSequenceEdito
   const [items, setItems] = useState<Workout[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     // Ordenar inicialmente pelos valores de sequence_order, se existirem

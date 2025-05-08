@@ -5,12 +5,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Plus, Search, Filter, ArrowUpDown, ListOrdered } from "lucide-react"
 
-import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
+import { Button, Input, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui"
 import { getCurrentUser, UserSession } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
 import { Workout } from "@/app/types/database.types"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui/sheet"
 import { WorkoutSequenceEditor } from "@/app/components/workouts/workout-sequence-editor"
 
 type SortOrderType = 'asc' | 'desc' | 'seq';
