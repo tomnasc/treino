@@ -62,7 +62,9 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   const [restEndTime, setRestEndTime] = useState<number | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [workoutDuration, setWorkoutDuration] = useState(0)
-  const [workoutStartTime] = useState(new Date())
+  const [workoutStartTime, setWorkoutStartTime] = useState(new Date())
+  const [pausedTime, setPausedTime] = useState(0)
+  const [pauseStartTime, setPauseStartTime] = useState<number | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isFinishing, setIsFinishing] = useState(false)
   const [exercisesCompleted, setExercisesCompleted] = useState<string[]>([])
@@ -202,6 +204,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
               
             duration = parsedState.workoutDuration || 0;
             
+            // Recuperar o tempo pausado
+            const savedPausedTime = parsedState.pausedTime || 0;
+            setPausedTime(savedPausedTime);
+            
             // Combinar exercícios completos
             if (parsedState.exercisesCompleted && Array.isArray(parsedState.exercisesCompleted)) {
               exercises_completed = Array.from(
@@ -252,9 +258,17 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         setCurrentExerciseIndex(exerciseIndex);
         setCurrentSetIndex(setIndex);
         setExercisesCompleted(exercises_completed);
+        
+        // Configurar o cronômetro para continuar de onde parou
         setWorkoutDuration(duration);
         
-        console.log(`Estado restaurado: Exercício ${exerciseIndex + 1}, Série ${setIndex + 1}`);
+        // Ajustar a hora de início para manter a duração
+        // Adicionar o tempo pausado para ter um cálculo correto
+        const calculatedStartTime = new Date();
+        calculatedStartTime.setSeconds(calculatedStartTime.getSeconds() - duration - Math.floor(pausedTime / 1000));
+        setWorkoutStartTime(calculatedStartTime);
+        
+        console.log(`Estado restaurado: Exercício ${exerciseIndex + 1}, Série ${setIndex + 1}, Duração: ${duration}s, Pausado: ${Math.floor(pausedTime / 1000)}s`);
         
         // Mostrar alerta uma única vez
         showToastOnce('treino-retomado', {
@@ -291,6 +305,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           exercisesCompleted,
           workoutDuration,
           exerciseHistory,
+          pausedTime,
           lastUpdated: new Date().toISOString()
         };
         
@@ -326,6 +341,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             exercisesCompleted,
             workoutDuration,
             exerciseHistory,
+            pausedTime,
             lastUpdated: new Date().toISOString()
           };
           
@@ -420,14 +436,21 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
   // Timer para a duração total do treino
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (!isPaused) {
-        setWorkoutDuration(Math.floor((new Date().getTime() - workoutStartTime.getTime()) / 1000))
-      }
-    }, 1000)
+    let timer: NodeJS.Timeout;
 
-    return () => clearInterval(timer)
-  }, [workoutStartTime, isPaused])
+    if (!isPaused) {
+      timer = setInterval(() => {
+        const now = new Date().getTime();
+        const elapsed = now - workoutStartTime.getTime();
+        // Usar o tempo pausado acumulado para calcular o tempo total
+        setWorkoutDuration(Math.floor(elapsed / 1000) - Math.floor(pausedTime / 1000));
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [workoutStartTime, isPaused, pausedTime]);
 
   // Função auxiliar para tocar sons
   const playSound = (type: 'rest-complete' | 'exercise-complete' | 'set-complete') => {
@@ -691,15 +714,27 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     setIsPaused(prev => {
       const newPausedState = !prev;
       
-      // Se estiver saindo do modo pausado (voltando a contar)
-      if (isResting && prev && !newPausedState && restTimeLeft > 0) {
-        // Recalcular o tempo de término baseado no tempo restante
-        setRestEndTime(Date.now() + restTimeLeft * 1000);
+      if (newPausedState) {
+        // Começando uma pausa - salvar o momento atual
+        setPauseStartTime(Date.now());
+      } else {
+        // Terminando uma pausa - calcular quanto tempo ficou pausado
+        if (pauseStartTime !== null) {
+          const pauseDuration = Date.now() - pauseStartTime;
+          setPausedTime(prev => prev + pauseDuration);
+          setPauseStartTime(null);
+        }
+        
+        // Se estiver saindo do modo pausado e estiver no descanso
+        if (isResting && restTimeLeft > 0) {
+          // Recalcular o tempo de término baseado no tempo restante
+          setRestEndTime(Date.now() + restTimeLeft * 1000);
+        }
       }
       
       return newPausedState;
-    })
-  }
+    });
+  };
 
   const saveExerciseHistory = async (exerciseId: string) => {
     if (!workoutHistoryId) return;
@@ -744,6 +779,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           exercisesCompleted,
           workoutDuration,
           exerciseHistory,
+          pausedTime,
           lastUpdated: new Date().toISOString()
         };
         
