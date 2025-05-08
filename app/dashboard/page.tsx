@@ -38,7 +38,7 @@ export default function DashboardPage() {
         // Obter o próximo treino usando a nova função
         try {
           const { data: nextWorkoutData, error: nextWorkoutError } = await supabase
-            .rpc('get_next_workout', { user_id: currentUser.id })
+            .rpc('get_next_workout', { p_user_id: currentUser.id })
             
           if (nextWorkoutError) {
             console.error("Erro ao obter próximo treino:", nextWorkoutError)
