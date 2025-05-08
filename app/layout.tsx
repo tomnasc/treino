@@ -141,9 +141,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <ToastProvider>{children}</ToastProvider>
-          <PWARegister />
+          <ToastProvider>
+            {children}
+            <PWARegister />
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
