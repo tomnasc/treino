@@ -19,7 +19,7 @@ export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortOrder, setSortOrder] = useState<SortOrderType>('desc')
+  const [sortOrder, setSortOrder] = useState<SortOrderType>('seq')
   const [isReorderSheetOpen, setIsReorderSheetOpen] = useState(false)
 
   async function fetchWorkouts() {
@@ -32,18 +32,37 @@ export default function WorkoutsPage() {
       }
       setUser(currentUser)
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("workouts")
         .select("*")
         .eq("created_by", currentUser.id)
-        .order(sortOrder === 'seq' ? 'sequence_order' : 'created_at', { 
-          ascending: sortOrder === 'asc' || sortOrder === 'seq'
+        
+      if (sortOrder !== 'seq') {
+        query = query.order('created_at', { 
+          ascending: sortOrder === 'asc'
         })
+      }
+      
+      const { data, error } = await query
 
       if (error) {
         console.error("Erro ao buscar treinos:", error)
       } else {
-        setWorkouts(data || [])
+        if (sortOrder === 'seq' && data) {
+          const sortedData = [...data].sort((a, b) => {
+            const aOrder = a.sequence_order && a.sequence_order > 0 ? a.sequence_order : 999999
+            const bOrder = b.sequence_order && b.sequence_order > 0 ? b.sequence_order : 999999
+            
+            if (aOrder !== bOrder) return aOrder - bOrder
+            
+            const aDate = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bDate = b.created_at ? new Date(b.created_at).getTime() : 0
+            return bDate - aDate
+          })
+          setWorkouts(sortedData)
+        } else {
+          setWorkouts(data || [])
+        }
       }
     } catch (error) {
       console.error("Erro:", error)
@@ -63,15 +82,15 @@ export default function WorkoutsPage() {
 
   const toggleSortOrder = () => {
     setSortOrder(prev => {
-      // Rotaciona entre 'desc', 'asc' e 'seq'
+      if (prev === 'seq') return 'desc'
       if (prev === 'desc') return 'asc'
-      if (prev === 'asc') return 'seq'
-      return 'desc'
+      return 'seq'
     })
   }
 
   const handleReorderComplete = () => {
     setIsReorderSheetOpen(false)
+    setSortOrder('seq')
     fetchWorkouts()
   }
 
@@ -107,15 +126,16 @@ export default function WorkoutsPage() {
             <span className="sr-only">Buscar</span>
           </Button>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={toggleSortOrder}>
+        
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" className="w-full xs:w-auto" onClick={toggleSortOrder}>
             <ArrowUpDown className="mr-2 h-4 w-4" />
             {getSortLabel()}
           </Button>
           
           <Sheet open={isReorderSheetOpen} onOpenChange={setIsReorderSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full xs:w-auto">
                 <ListOrdered className="mr-2 h-4 w-4" />
                 Reordenar
               </Button>
@@ -136,7 +156,7 @@ export default function WorkoutsPage() {
             </SheetContent>
           </Sheet>
           
-          <Button asChild>
+          <Button asChild className="w-full xs:w-auto">
             <Link href="/dashboard/workouts/new">
               <Plus className="mr-2 h-4 w-4" />
               Novo Treino
