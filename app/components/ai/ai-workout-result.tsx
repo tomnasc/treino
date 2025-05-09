@@ -66,25 +66,23 @@ export function AIWorkoutResult({ rawOutput, parsedWorkout, onBack }: AIWorkoutR
     return acc;
   }, {} as Record<number, typeof parsedWorkout.exercises>);
   
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(rawOutput)
-      .then(() => {
-        setIsCopied(true)
-        setTimeout(() => setIsCopied(false), 2000)
-        toast({
-          title: "Copiado para a área de transferência",
-          description: "O plano de treino foi copiado com sucesso.",
-        })
-      })
-      .catch(err => {
-        console.error("Erro ao copiar:", err)
-        toast({
-          title: "Erro ao copiar",
-          description: "Não foi possível copiar o texto. Tente novamente.",
-          variant: "destructive",
-        })
-      })
-  }
+  // Extrair observações do rawOutput
+  const extractObservations = (text: string): string[] => {
+    const observationMatches = text.match(/OBSERVAÇÕES:\s*([^]*)$/i);
+    
+    if (observationMatches && observationMatches[1]) {
+      return observationMatches[1]
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.startsWith('-') || line.startsWith('•'))
+        .map(line => line.replace(/^[-•]\s*/, '').trim())
+        .filter(line => line.length > 0);
+    }
+    
+    return [];
+  };
+  
+  const observations = extractObservations(rawOutput);
   
   // Função para encontrar ou criar um exercício
   const findOrCreateExercise = async (name: string, userId: string) => {
@@ -129,55 +127,65 @@ export function AIWorkoutResult({ rawOutput, parsedWorkout, onBack }: AIWorkoutR
         return
       }
       
-      // Criar o treino
-      const { data: workoutData, error: workoutError } = await supabase
-        .from("workouts")
-        .insert({
-          name: parsedWorkout.name,
-          description: parsedWorkout.description,
-          created_by: currentUser.id,
-          is_ai_generated: true,
-        })
-        .select()
-        .single()
+      // Array para armazenar os IDs dos treinos criados
+      const workoutIds: string[] = [];
+      
+      // Processamento por dia
+      for (const [day, exercises] of Object.entries(exercisesByDay)) {
+        // Nome para este dia específico
+        const dayName = `${parsedWorkout.name} - Dia ${day}`;
         
-      if (workoutError) {
-        throw workoutError
-      }
-      
-      const workoutId = workoutData.id
-      
-      // Processar exercícios sequencialmente para evitar problemas com async/await em map
-      const exerciseInserts = [];
-      for (const exercise of parsedWorkout.exercises) {
-        const exerciseId = await findOrCreateExercise(exercise.name, currentUser.id);
-        exerciseInserts.push({
-          workout_id: workoutId,
-          exercise_id: exerciseId,
-          sets: exercise.sets,
-          reps: exercise.reps,
-          rest_time: exercise.restTime,
-          weight: exercise.weight,
-          order_position: exercise.order,
-          notes: `Dia ${exercise.dayOfWeek}`
-        });
-      }
-      
-      const { error: exercisesError } = await supabase
-        .from("workout_exercises")
-        .insert(exerciseInserts)
+        // Criar o treino para este dia
+        const { data: workoutData, error: workoutError } = await supabase
+          .from("workouts")
+          .insert({
+            name: dayName,
+            description: parsedWorkout.description,
+            created_by: currentUser.id,
+            is_ai_generated: true,
+          })
+          .select()
+          .single();
+          
+        if (workoutError) {
+          throw workoutError;
+        }
         
-      if (exercisesError) {
-        throw exercisesError
+        const workoutId = workoutData.id;
+        workoutIds.push(workoutId);
+        
+        // Processar exercícios deste dia
+        const exerciseInserts = [];
+        for (const exercise of exercises) {
+          const exerciseId = await findOrCreateExercise(exercise.name, currentUser.id);
+          exerciseInserts.push({
+            workout_id: workoutId,
+            exercise_id: exerciseId,
+            sets: exercise.sets,
+            reps: exercise.reps,
+            rest_time: exercise.restTime,
+            weight: exercise.weight,
+            order_position: exercise.order,
+            exercise_type: "reps"  // Adicionando o tipo de exercício como "reps" por padrão
+          });
+        }
+        
+        const { error: exercisesError } = await supabase
+          .from("workout_exercises")
+          .insert(exerciseInserts);
+          
+        if (exercisesError) {
+          throw exercisesError;
+        }
       }
       
       toast({
-        title: "Treino salvo com sucesso!",
-        description: "O plano de treino foi adicionado à sua lista de treinos.",
+        title: `${workoutIds.length} treinos salvos com sucesso!`,
+        description: `Foram criados ${workoutIds.length} treinos, um para cada dia do plano.`,
       })
       
-      // Redirecionar para a página do treino
-      router.push(`/dashboard/workouts/${workoutId}`)
+      // Redirecionar para a página de treinos
+      router.push('/dashboard/workouts');
     } catch (error) {
       console.error("Erro ao salvar treino:", error)
       toast({
@@ -247,7 +255,10 @@ export function AIWorkoutResult({ rawOutput, parsedWorkout, onBack }: AIWorkoutR
               <AlertDialogHeader>
                 <AlertDialogTitle>Salvar este treino?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Este treino será adicionado à sua lista de treinos e você poderá editá-lo posteriormente.
+                  {Object.keys(exercisesByDay).length > 0 ? 
+                    `Serão criados ${Object.keys(exercisesByDay).length} treinos, um para cada dia do plano.` : 
+                    "Este treino será adicionado à sua lista de treinos."
+                  }
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -309,6 +320,17 @@ export function AIWorkoutResult({ rawOutput, parsedWorkout, onBack }: AIWorkoutR
                 <p className="text-muted-foreground max-w-md">
                   Não foi possível processar os exercícios deste treino. Tente gerar um novo plano de treino.
                 </p>
+              </div>
+            )}
+            
+            {observations.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-3">Observações</h3>
+                <ul className="space-y-2 list-disc pl-5">
+                  {observations.map((obs, index) => (
+                    <li key={index} className="text-sm">{obs}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
