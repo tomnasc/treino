@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { CreditCard, Sparkles } from "lucide-react"
+import { CreditCard, Sparkles, ArrowRight } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -14,6 +14,7 @@ import { getCurrentUser } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
 import { getStripeClient, createCheckoutSession, createCustomerPortalSession } from "@/app/lib/stripe"
 import { Profile } from "@/app/types/database.types"
+import Link from "next/link"
 
 export default function PlansPage() {
   const router = useRouter()
@@ -214,11 +215,23 @@ export default function PlansPage() {
   
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Planos Premium</h2>
-        <p className="text-muted-foreground">
-          Desbloqueie recursos avançados e maximize seus resultados com um plano premium
-        </p>
+      <div className="flex flex-col space-y-2 sm:flex-row sm:justify-between sm:space-y-0">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Planos Premium</h2>
+          <p className="text-muted-foreground">
+            Desbloqueie recursos avançados e maximize seus resultados com um plano premium
+          </p>
+        </div>
+        
+        {isSubscribed && (
+          <Link
+            href="/dashboard/billing"
+            className="flex items-center text-sm font-medium text-primary hover:underline"
+          >
+            Ver detalhes da assinatura
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Link>
+        )}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

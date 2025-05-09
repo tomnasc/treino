@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, CreditCard, Loader2, Plus, Sparkles } from "lucide-react"
+import { CheckCircle2, CreditCard, Loader2, Plus, Sparkles, ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card"
@@ -49,6 +50,11 @@ export default function BillingPage() {
     setProcessingPayment(true)
     
     try {
+      // Mapear os IDs internos para os IDs do Stripe
+      const priceId = planId === "premium_monthly" 
+        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_MENSAL 
+        : process.env.NEXT_PUBLIC_STRIPE_PRICE_ANUAL;
+      
       // Aqui você integraria com o Stripe ou outro gateway de pagamento
       const response = await fetch("/api/stripe/create-checkout", {
         method: "POST",
@@ -56,7 +62,8 @@ export default function BillingPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          planId,
+          priceId,
+          returnUrl: `${window.location.origin}/dashboard/billing`,
         }),
       })
       
@@ -119,10 +126,22 @@ export default function BillingPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
-      <h1 className="text-2xl font-bold tracking-tight">Assinatura</h1>
-      <p className="text-muted-foreground">
-        Gerencie sua assinatura e acesse recursos premium do Treino na Mão.
-      </p>
+      <div className="flex flex-col space-y-2 sm:flex-row sm:justify-between sm:space-y-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Assinatura</h1>
+          <p className="text-muted-foreground">
+            Gerencie sua assinatura e acesse recursos premium do Treino na Mão.
+          </p>
+        </div>
+        
+        <Link
+          href="/dashboard/planos"
+          className="flex items-center text-sm font-medium text-primary hover:underline"
+        >
+          Ver todos os planos disponíveis
+          <ArrowRight className="ml-1 h-4 w-4" />
+        </Link>
+      </div>
 
       {/* Status da Assinatura */}
       <Card>
@@ -252,21 +271,21 @@ export default function BillingPage() {
                   </Badge>
                   <CardTitle>Plano Premium</CardTitle>
                   <CardDescription>Para atletas dedicados</CardDescription>
-                  <div className="mt-2 text-3xl font-bold">R$ 19,90<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+                  <div className="mt-2 text-3xl font-bold">R$ 6,97<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Treinos ilimitados</span>
+                      <span>Geração ilimitada de treinos com IA</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Gerador de treinos com IA</span>
+                      <span>Treinos personalizados exclusivos</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Análise avançada de progresso</span>
+                      <span>Análises avançadas de progresso</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
@@ -274,7 +293,11 @@ export default function BillingPage() {
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Sem anúncios</span>
+                      <span>Acesso aos serviços de personal trainer</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                      <span>Sem limite de treinos cadastrados</span>
                     </li>
                   </ul>
                 </CardContent>
@@ -285,11 +308,13 @@ export default function BillingPage() {
                     disabled={processingPayment}
                   >
                     {processingPayment ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
                     ) : (
-                      <Plus className="mr-2 h-4 w-4" />
+                      "Assinar agora"
                     )}
-                    Assinar agora
                   </Button>
                 </CardFooter>
               </Card>
@@ -330,29 +355,26 @@ export default function BillingPage() {
               <Card className="border-primary/50 bg-primary/5">
                 <CardHeader>
                   <Badge className="mb-2 w-fit bg-primary/20 text-primary" variant="outline">
-                    Melhor Valor
+                    Melhor valor
                   </Badge>
                   <CardTitle>Plano Premium Anual</CardTitle>
-                  <CardDescription>Para atletas dedicados</CardDescription>
-                  <div className="flex items-baseline">
-                    <div className="mt-2 text-3xl font-bold">R$ 191,90<span className="text-sm font-normal text-muted-foreground">/ano</span></div>
-                    <div className="ml-2 text-sm text-muted-foreground line-through">R$ 238,80</div>
-                  </div>
-                  <div className="text-sm text-green-500 font-medium">Economia de R$ 46,90</div>
+                  <CardDescription>Economize com o plano anual</CardDescription>
+                  <div className="mt-2 text-3xl font-bold">R$ 66,90<span className="text-sm font-normal text-muted-foreground">/ano</span></div>
+                  <p className="text-sm text-muted-foreground mt-1">Apenas R$ 5,58 por mês</p>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Treinos ilimitados</span>
+                      <span>Geração ilimitada de treinos com IA</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Gerador de treinos com IA</span>
+                      <span>Treinos personalizados exclusivos</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Análise avançada de progresso</span>
+                      <span>Análises avançadas de progresso</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
@@ -360,11 +382,15 @@ export default function BillingPage() {
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Sem anúncios</span>
+                      <span>Acesso aos serviços de personal trainer</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>20% de desconto</span>
+                      <span>Sem limite de treinos cadastrados</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                      <span>Economia significativa em relação ao plano mensal</span>
                     </li>
                   </ul>
                 </CardContent>
@@ -375,17 +401,27 @@ export default function BillingPage() {
                     disabled={processingPayment}
                   >
                     {processingPayment ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
                     ) : (
-                      <Plus className="mr-2 h-4 w-4" />
+                      "Assinar anual com desconto"
                     )}
-                    Assinar anual
                   </Button>
                 </CardFooter>
               </Card>
             </div>
           </TabsContent>
         </Tabs>
+      )}
+      
+      {!isPremium && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg p-4 mt-6">
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            <span className="font-medium">Importante:</span> Se você cancelar sua assinatura premium, perderá acesso aos serviços de personal trainer imediatamente, mas poderá continuar usando os treinos já criados.
+          </p>
+        </div>
       )}
 
       {/* Benefícios Premium */}
