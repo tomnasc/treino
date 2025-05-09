@@ -240,9 +240,14 @@ export default function Home() {
         
         <section className="w-full py-12 bg-background">
           <div className="container px-4 md:px-6">
-            <h2 className="text-2xl font-bold tracking-tight text-center mb-8">Recursos do Aplicativo</h2>
+            <div className="text-center max-w-3xl mx-auto mb-10">
+              <h2 className="text-3xl font-bold tracking-tight mb-2">Todos os Recursos</h2>
+              <p className="text-muted-foreground">
+                O Treino na Mão oferece uma ampla gama de funcionalidades para otimizar seu treino e acompanhar seu progresso fitness.
+              </p>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <div className="flex flex-col items-center text-center p-6 border rounded-lg">
                 <Wifi className="h-10 w-10 mb-4 text-primary" />
                 <h3 className="text-xl font-medium mb-2">Funciona Offline</h3>
@@ -266,6 +271,113 @@ export default function Home() {
                   Instale o aplicativo diretamente no seu celular ou computador para acesso rápido.
                 </p>
               </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"></path>
+                  <line x1="8" y1="16" x2="8.01" y2="16"></line>
+                  <line x1="8" y1="20" x2="8.01" y2="20"></line>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  <line x1="12" y1="22" x2="12.01" y2="22"></line>
+                  <line x1="16" y1="16" x2="16.01" y2="16"></line>
+                  <line x1="16" y1="20" x2="16.01" y2="20"></line>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Sincronização Automática</h3>
+                <p className="text-muted-foreground">
+                  Seus dados são sincronizados automaticamente quando você volta a ficar online após treinar offline.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Treinos Personalizados</h3>
+                <p className="text-muted-foreground">
+                  Crie treinos personalizados com sequências de exercícios, séries, repetições e tempos de descanso.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Histórico de Treinos</h3>
+                <p className="text-muted-foreground">
+                  Acompanhe todo seu histórico de treinos com dados detalhados de cada sessão realizada.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 6v6l4 2"></path>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Cronômetros Integrados</h3>
+                <p className="text-muted-foreground">
+                  Cronômetros para acompanhar o tempo de descanso entre séries e a duração total do treino.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Exercícios Favoritos</h3>
+                <p className="text-muted-foreground">
+                  Marque exercícios como favoritos para acessá-los rapidamente ao criar novos treinos.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Biblioteca de Exercícios</h3>
+                <p className="text-muted-foreground">
+                  Acesse uma biblioteca completa com centenas de exercícios categorizados por grupo muscular.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                  <line x1="12" x2="12" y1="8" y2="16"></line>
+                  <line x1="8" x2="16" y1="12" y2="12"></line>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Treino com IA</h3>
+                <p className="text-muted-foreground">
+                  Gere treinos personalizados com inteligência artificial baseados em seus objetivos e equipamentos disponíveis.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Personal Trainers</h3>
+                <p className="text-muted-foreground">
+                  Conecte-se com personal trainers profissionais que podem criar e acompanhar seus treinos personalizados.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-4 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
+                  <path d="M13 5v2"></path>
+                  <path d="M13 17v2"></path>
+                  <path d="M13 11v2"></path>
+                </svg>
+                <h3 className="text-xl font-medium mb-2">Notificações Sonoras</h3>
+                <p className="text-muted-foreground">
+                  Sons específicos para marcar o fim do descanso, conclusão de série e finalização de exercícios durante o treino.
+                </p>
+              </div>
             </div>
             
             <div className="flex justify-center mt-8">
@@ -276,6 +388,139 @@ export default function Home() {
                 Comece agora
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Nova seção de demonstração visual */}
+        <section className="w-full py-12 md:py-20 bg-muted/50">
+          <div className="container px-4 md:px-6">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <h2 className="text-3xl font-bold tracking-tight mb-2">Treine em Qualquer Dispositivo</h2>
+              <p className="text-muted-foreground">
+                O Treino na Mão funciona perfeitamente em smartphones, tablets e computadores, mantendo seus dados sincronizados em todos os seus dispositivos.
+              </p>
+            </div>
+            
+            <div className="relative mx-auto max-w-5xl">
+              {/* Mockup para mostrar o app em vários dispositivos */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                <div className="hidden md:block transform -rotate-6">
+                  <div className="bg-background rounded-3xl overflow-hidden border shadow-lg p-1 mx-auto max-w-[220px]">
+                    <div className="rounded-2xl overflow-hidden border-4 border-background">
+                      <div className="relative pb-[200%] bg-gray-900">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center text-white p-4">
+                            <Dumbbell className="h-10 w-10 mx-auto mb-2 text-primary" />
+                            <p className="text-sm font-medium">Modo Treino em ação</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="z-10 transform scale-110">
+                  <div className="bg-background rounded-3xl overflow-hidden border shadow-xl p-2 mx-auto max-w-[280px]">
+                    <div className="rounded-2xl overflow-hidden">
+                      <div className="relative pb-[210%] bg-gray-900">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <div className="text-center text-white p-4">
+                            <h3 className="text-lg font-bold mb-3">Treino na Mão</h3>
+                            <div className="mb-4 p-3 bg-gray-800 rounded-lg mx-auto w-36">
+                              <Dumbbell className="h-12 w-12 mx-auto text-primary" />
+                            </div>
+                            <p className="text-sm">Acompanhe seus treinos em tempo real</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="hidden md:block transform rotate-6">
+                  <div className="bg-background rounded-2xl overflow-hidden border shadow-lg mx-auto max-w-[320px]">
+                    <div className="p-1">
+                      <div className="rounded-xl overflow-hidden">
+                        <div className="relative pb-[70%] bg-gray-900">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center text-white p-4">
+                              <p className="text-sm font-medium mb-3">Dashboard com seus treinos</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-gray-800 p-2 rounded">
+                                  <Dumbbell className="h-6 w-6 mx-auto text-primary mb-1" />
+                                  <span className="text-xs">Treino A</span>
+                                </div>
+                                <div className="bg-gray-800 p-2 rounded">
+                                  <Dumbbell className="h-6 w-6 mx-auto text-primary mb-1" />
+                                  <span className="text-xs">Treino B</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Indicadores de funcionalidade */}
+              <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <div>
+                  <div className="bg-primary/10 rounded-full p-3 w-14 h-14 flex items-center justify-center mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                  </div>
+                  <h3 className="mt-4 text-lg font-medium">Treine em Qualquer Hora</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    O app está sempre disponível, mesmo offline.
+                  </p>
+                </div>
+                
+                <div>
+                  <div className="bg-primary/10 rounded-full p-3 w-14 h-14 flex items-center justify-center mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="20" height="14" x="2" y="3" rx="2"></rect>
+                      <line x1="8" x2="16" y1="21" y2="21"></line>
+                      <line x1="12" x2="12" y1="17" y2="21"></line>
+                    </svg>
+                  </div>
+                  <h3 className="mt-4 text-lg font-medium">Multi-plataforma</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Funciona em qualquer dispositivo com navegador.
+                  </p>
+                </div>
+                
+                <div>
+                  <div className="bg-primary/10 rounded-full p-3 w-14 h-14 flex items-center justify-center mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </div>
+                  <h3 className="mt-4 text-lg font-medium">Personalizável</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Adapte de acordo com suas necessidades.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* CTA secundário */}
+            <div className="mt-16 text-center">
+              <Link
+                href="/login" 
+                className="inline-flex items-center justify-center rounded-md bg-primary px-8 py-3 text-base font-medium text-primary-foreground shadow-md transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                Experimente Agora
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+              <p className="mt-4 text-sm text-muted-foreground">
+                Não é necessário cartão de crédito. Crie sua conta gratuitamente.
+              </p>
             </div>
           </div>
         </section>
