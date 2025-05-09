@@ -473,8 +473,8 @@ export default function ClientProgressPage({ params }: { params: { id: string } 
                               {history.workout?.name || "Treino"}
                             </h3>
                             <Badge 
-                              variant={history.completed ? "success" : "destructive"}
-                              className="ml-2"
+                              variant={history.completed ? "secondary" : "destructive"}
+                              className={history.completed ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : ""}
                             >
                               {history.completed ? "Concluído" : "Incompleto"}
                             </Badge>
