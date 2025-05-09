@@ -245,7 +245,11 @@ export default function BillingPage() {
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Até 3 treinos</span>
+                      <span>Até 1 treino</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                      <span>Máximo 7 exercícios por treino</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
@@ -333,7 +337,11 @@ export default function BillingPage() {
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      <span>Até 3 treinos</span>
+                      <span>Até 1 treino</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                      <span>Máximo 7 exercícios por treino</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft, Loader2, Save } from "lucide-react"
@@ -18,6 +18,47 @@ export default function NewWorkoutPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [canCreateWorkout, setCanCreateWorkout] = useState(true)
+  
+  useEffect(() => {
+    async function checkUserLimits() {
+      try {
+        const currentUser = await getCurrentUser()
+        if (!currentUser) {
+          router.push("/login")
+          return
+        }
+        
+        // Verificar se é um usuário gratuito
+        if (currentUser.role === 'free') {
+          // Consultar função no banco para verificar se o usuário atingiu o limite
+          const { data, error } = await supabase
+            .rpc('check_free_user_workout_limits', {
+              user_id: currentUser.id
+            })
+            
+          if (error) {
+            console.error("Erro ao verificar limites:", error)
+            return
+          }
+          
+          setCanCreateWorkout(data)
+          
+          if (!data) {
+            toast({
+              title: "Limite atingido",
+              description: "Usuários gratuitos podem criar apenas 1 treino. Faça upgrade para o plano premium para criar treinos ilimitados.",
+              variant: "destructive",
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao verificar limites:", error)
+      }
+    }
+    
+    checkUserLimits()
+  }, [router, toast])
   
   const handleCreateWorkout = async (data: {
     name: string
@@ -32,6 +73,28 @@ export default function NewWorkoutPage() {
       if (!currentUser) {
         router.push("/login")
         return
+      }
+      
+      // Verificar novamente se pode criar treino (usuário gratuito)
+      if (currentUser.role === 'free') {
+        const { data: canCreate, error } = await supabase
+          .rpc('check_free_user_workout_limits', {
+            user_id: currentUser.id
+          })
+          
+        if (error) {
+          throw error
+        }
+        
+        if (!canCreate) {
+          toast({
+            title: "Limite atingido",
+            description: "Usuários gratuitos podem criar apenas 1 treino. Faça upgrade para o plano premium para criar treinos ilimitados.",
+            variant: "destructive",
+          })
+          router.push("/dashboard/planos")
+          return
+        }
       }
       
       const { data: workoutData, error } = await supabase
@@ -90,7 +153,21 @@ export default function NewWorkoutPage() {
       </div>
       
       <div className="rounded-lg border p-6">
-        <WorkoutForm onSubmit={handleCreateWorkout} isLoading={isLoading} />
+        {canCreateWorkout ? (
+          <WorkoutForm onSubmit={handleCreateWorkout} isLoading={isLoading} />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <h3 className="text-lg font-semibold mb-2">Limite de treinos atingido</h3>
+            <p className="text-muted-foreground mb-4">
+              Usuários gratuitos podem criar apenas 1 treino. Faça upgrade para o plano premium para criar treinos ilimitados.
+            </p>
+            <Button asChild>
+              <Link href="/dashboard/planos">
+                Ver planos premium
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

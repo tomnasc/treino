@@ -13,6 +13,7 @@ import { getCurrentUser } from "@/app/lib/auth"
 import { generateWorkoutPlan, parseWorkoutPlan, WorkoutGenerationInput } from "@/app/lib/huggingface"
 import { supabase } from "@/app/lib/supabase"
 import { AISettings, TrainingGoal } from "@/app/types/database.types"
+import Link from "next/link"
 
 export default function AIWorkoutPage() {
   const router = useRouter()
@@ -24,6 +25,7 @@ export default function AIWorkoutPage() {
   const [trainingGoals, setTrainingGoals] = useState<TrainingGoal[]>([])
   const [generatedWorkout, setGeneratedWorkout] = useState<string | null>(null)
   const [parsedWorkout, setParsedWorkout] = useState<ReturnType<typeof parseWorkoutPlan> | null>(null)
+  const [isPremiumUser, setIsPremiumUser] = useState(false)
   
   useEffect(() => {
     async function initialize() {
@@ -35,6 +37,19 @@ export default function AIWorkoutPage() {
           router.push("/login")
           return
         }
+        
+        // Verificar se o usuário é gratuito
+        if (currentUser.role === 'free') {
+          toast({
+            title: "Recurso premium",
+            description: "A geração de treinos com IA é exclusiva para assinantes premium. Faça upgrade para acessar este recurso.",
+            variant: "destructive",
+          })
+          router.push("/dashboard/planos")
+          return
+        }
+        
+        setIsPremiumUser(currentUser.role !== 'free')
         
         // Buscar configurações do usuário
         const { data: settings, error: settingsError } = await supabase
@@ -81,6 +96,17 @@ export default function AIWorkoutPage() {
       // Salvar ou atualizar as configurações do usuário
       const currentUser = await getCurrentUser()
       if (!currentUser) return
+      
+      // Verificar novamente se o usuário é premium
+      if (currentUser.role === 'free') {
+        toast({
+          title: "Recurso premium",
+          description: "A geração de treinos com IA é exclusiva para assinantes premium. Faça upgrade para acessar este recurso.",
+          variant: "destructive",
+        })
+        router.push("/dashboard/planos")
+        return
+      }
       
       // Construir objeto para salvar no banco de dados
       const settingsData = {
@@ -150,6 +176,25 @@ export default function AIWorkoutPage() {
     return (
       <div className="flex h-[400px] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+  
+  // Se o usuário não for premium, mostrar mensagem de upgrade
+  if (!isPremiumUser) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[500px] text-center">
+        <div className="w-full max-w-md p-6 border rounded-lg bg-muted/20">
+          <BrainCircuit className="mx-auto mb-4 h-12 w-12 text-primary opacity-80" />
+          <h2 className="text-2xl font-bold mb-2">Recurso Premium</h2>
+          <p className="text-muted-foreground mb-6">
+            A geração de treinos com IA é um recurso exclusivo para assinantes premium.
+            Faça upgrade agora para criar treinos personalizados com inteligência artificial.
+          </p>
+          <Button asChild size="lg" className="w-full">
+            <Link href="/dashboard/planos">Ver planos de assinatura</Link>
+          </Button>
+        </div>
       </div>
     )
   }

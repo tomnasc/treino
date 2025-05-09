@@ -49,12 +49,16 @@ export function DashboardNav({ user, onItemClick }: DashboardNavProps) {
       href: "/dashboard/train",
       pattern: /^\/dashboard\/train/,
     },
-    {
-      label: "Gerador de Treinos",
-      icon: BrainCircuit,
-      href: "/dashboard/ai-workout",
-      pattern: /^\/dashboard\/ai-workout/,
-    },
+    ...(user?.role !== "free"
+      ? [
+          {
+            label: "Gerador de Treinos",
+            icon: BrainCircuit,
+            href: "/dashboard/ai-workout",
+            pattern: /^\/dashboard\/ai-workout/,
+          } as const,
+        ]
+      : []),
     {
       label: "Histórico",
       icon: BarChart3,
@@ -88,6 +92,12 @@ export function DashboardNav({ user, onItemClick }: DashboardNavProps) {
       icon: MessageSquare,
       href: "/dashboard/feedback",
       pattern: /^\/dashboard\/feedback/,
+    },
+    {
+      label: "Mensagens",
+      icon: MessageSquare,
+      href: "/dashboard/messages",
+      pattern: /^\/dashboard\/messages/,
     },
     ...(user?.role !== "personal" && user?.role !== "admin"
       ? [

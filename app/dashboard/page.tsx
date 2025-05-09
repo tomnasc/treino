@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Activity, Dumbbell, Calendar, Award } from "lucide-react"
+import { ArrowRight, Activity, Dumbbell, Calendar, Award, BrainCircuit, Sparkles, User, MessageSquare } from "lucide-react"
 
 import { getCurrentUser, UserSession } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
@@ -107,6 +107,65 @@ export default function DashboardPage() {
         </Link>
 
         <Link
+          href="/dashboard/personal-trainers"
+          className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+              <User className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">Personal Trainers</h3>
+              <p className="text-sm text-muted-foreground">
+                Encontre um personal trainer para te ajudar
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+        </Link>
+
+        {user?.role !== 'free' ? (
+          <Link
+            href="/dashboard/ai-workout"
+            className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
+          >
+            <div className="flex items-center space-x-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+                <BrainCircuit className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium">Gerador de Treinos</h3>
+                <p className="text-sm text-muted-foreground">
+                  Crie treinos com inteligência artificial
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+          </Link>
+        ) : (
+          <Link
+            href="/dashboard/planos"
+            className="group relative overflow-hidden rounded-lg border border-dashed p-6 hover:border-primary"
+          >
+            <div className="flex items-center space-x-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+                <Sparkles className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium">Gerador de Treinos</h3>
+                <p className="text-sm text-muted-foreground">
+                  Exclusivo para assinantes premium
+                </p>
+                <span className="mt-1 inline-block text-xs font-medium text-primary">
+                  Upgrade necessário
+                </span>
+              </div>
+            </div>
+            <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+          </Link>
+        )}
+        
+        <Link
           href="/dashboard/progress"
           className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
         >
@@ -136,6 +195,24 @@ export default function DashboardPage() {
               <h3 className="font-medium">Conquistas</h3>
               <p className="text-sm text-muted-foreground">
                 Veja suas conquistas e medalhas
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+        </Link>
+
+        <Link
+          href="/dashboard/messages"
+          className="group relative overflow-hidden rounded-lg border p-6 hover:border-primary"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-primary/10 bg-primary/5">
+              <MessageSquare className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">Mensagens</h3>
+              <p className="text-sm text-muted-foreground">
+                Converse com personal trainers
               </p>
             </div>
           </div>

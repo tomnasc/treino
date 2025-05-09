@@ -148,6 +148,26 @@ export function WorkoutExerciseEditor({
     try {
       setIsSaving(true)
 
+      // Verificar se há limite de exercícios para usuários gratuitos
+      const { data: canAddExercise, error: limitError } = await supabase
+        .rpc('check_free_user_exercise_limits', {
+          workout_id: workoutId
+        })
+        
+      if (limitError) {
+        throw limitError
+      }
+      
+      if (canAddExercise === false) {
+        toast({
+          title: "Limite atingido",
+          description: "Usuários gratuitos podem adicionar no máximo 7 exercícios por treino. Faça upgrade para o plano premium para ter exercícios ilimitados.",
+          variant: "destructive",
+        })
+        setIsSaving(false)
+        return
+      }
+
       // Calcular a próxima posição
       const nextPosition = exercises.length > 0 
         ? Math.max(...exercises.map(e => e.order_position)) + 1

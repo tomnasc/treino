@@ -49,6 +49,27 @@ export default function WorkoutDetailsPage({ params }: WorkoutDetailsPageProps) 
           return
         }
 
+        // Verificar se o usuário pode acessar este treino
+        const { data: canAccess, error: accessError } = await supabase
+          .rpc('can_access_workout', {
+            p_user_id: currentUser.id,
+            p_workout_id: params.id
+          })
+
+        if (accessError) {
+          console.error("Erro ao verificar acesso:", accessError)
+          // Continuar mesmo com erro para não bloquear usuários
+        } else if (canAccess === false) {
+          // Redirecionar se o usuário não tiver acesso
+          toast({
+            title: "Acesso restrito",
+            description: "Este treino não está disponível na sua conta gratuita. Faça upgrade para o plano premium para acessar todos os seus treinos.",
+            variant: "destructive",
+          })
+          router.push("/dashboard/workouts")
+          return
+        }
+
         // Buscar o treino
         const { data: workoutData, error: workoutError } = await supabase
           .from("workouts")
@@ -58,6 +79,17 @@ export default function WorkoutDetailsPage({ params }: WorkoutDetailsPageProps) 
 
         if (workoutError) {
           throw workoutError
+        }
+
+        // Verificar se o treino está oculto e o usuário é gratuito
+        if (workoutData.is_hidden && currentUser.role === 'free') {
+          toast({
+            title: "Acesso restrito",
+            description: "Este treino não está disponível na sua conta gratuita. Faça upgrade para o plano premium para acessar todos os seus treinos.",
+            variant: "destructive",
+          })
+          router.push("/dashboard/workouts")
+          return
         }
 
         setWorkout(workoutData)

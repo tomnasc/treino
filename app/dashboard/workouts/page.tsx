@@ -5,7 +5,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Plus, Search, Filter, ArrowUpDown, ListOrdered } from "lucide-react"
 
-import { Button, Input, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui"
+import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui/sheet"
 import { getCurrentUser, UserSession } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
 import { Workout } from "@/app/types/database.types"
@@ -21,6 +23,7 @@ export default function WorkoutsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrderType>('seq')
   const [isReorderSheetOpen, setIsReorderSheetOpen] = useState(false)
+  const [hasPremiumWorkouts, setHasPremiumWorkouts] = useState(false)
 
   async function fetchWorkouts() {
     try {
@@ -32,34 +35,47 @@ export default function WorkoutsPage() {
       }
       setUser(currentUser)
 
-      let query = supabase
-        .from("workouts")
-        .select("*")
-        .eq("created_by", currentUser.id)
-        
-      if (sortOrder !== 'seq') {
-        query = query.order('created_at', { 
-          ascending: sortOrder === 'asc'
-        })
+      // Verificar se o usuário tem treinos ocultos (foi premium no passado)
+      if (currentUser.role === 'free') {
+        const { count, error: hiddenError } = await supabase
+          .from("workouts")
+          .select("id", { count: 'exact', head: true })
+          .eq("created_by", currentUser.id)
+          .eq("is_hidden", true)
+          
+        setHasPremiumWorkouts(count !== null && count > 0)
       }
-      
-      const { data, error } = await query
+
+      // Usar a função list_available_workouts que já filtra conforme o tipo de usuário
+      const { data, error } = await supabase
+        .rpc('list_available_workouts', {
+          p_user_id: currentUser.id
+        })
 
       if (error) {
         console.error("Erro ao buscar treinos:", error)
+        
+        // Fallback para busca direta caso a função não exista
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("workouts")
+          .select("*")
+          .eq("created_by", currentUser.id)
+          .order('created_at', { ascending: sortOrder === 'asc' })
+        
+        if (fallbackError) {
+          console.error("Erro no fallback:", fallbackError)
+        } else {
+          setWorkouts(fallbackData || [])
+        }
       } else {
-        if (sortOrder === 'seq' && data) {
-          const sortedData = [...data].sort((a, b) => {
-            const aOrder = a.sequence_order && a.sequence_order > 0 ? a.sequence_order : 999999
-            const bOrder = b.sequence_order && b.sequence_order > 0 ? b.sequence_order : 999999
-            
-            if (aOrder !== bOrder) return aOrder - bOrder
-            
+        if (sortOrder !== 'seq' && data) {
+          // Ordenar por data se não for a ordenação por sequência
+          const sortedByDate = [...data].sort((a, b) => {
             const aDate = a.created_at ? new Date(a.created_at).getTime() : 0
             const bDate = b.created_at ? new Date(b.created_at).getTime() : 0
-            return bDate - aDate
+            return sortOrder === 'asc' ? aDate - bDate : bDate - aDate
           })
-          setWorkouts(sortedData)
+          setWorkouts(sortedByDate)
         } else {
           setWorkouts(data || [])
         }
@@ -111,6 +127,19 @@ export default function WorkoutsPage() {
           Gerencie e acompanhe seus treinos personalizados.
         </p>
       </div>
+
+      {user?.role === 'free' && hasPremiumWorkouts && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg p-4">
+          <h3 className="font-medium text-amber-800 dark:text-amber-300">Treinos premium ocultos</h3>
+          <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+            Você tem treinos criados durante seu período premium que estão ocultos. 
+            Faça upgrade para o plano premium para acessá-los novamente.
+          </p>
+          <Button variant="outline" size="sm" className="mt-2" asChild>
+            <Link href="/dashboard/planos">Ver planos premium</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row justify-between gap-4">
         <div className="flex flex-1 max-w-sm items-center space-x-2">

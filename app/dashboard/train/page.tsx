@@ -40,6 +40,27 @@ export default function TrainPage() {
         }
 
         if (workoutId) {
+          // Verificar se o usuário pode acessar este treino
+          const { data: canAccess, error: accessError } = await supabase
+            .rpc('can_access_workout', {
+              p_user_id: currentUser.id,
+              p_workout_id: workoutId
+            })
+
+          if (accessError) {
+            console.error("Erro ao verificar acesso:", accessError)
+            // Continuar mesmo com erro para não bloquear usuários
+          } else if (canAccess === false) {
+            // Redirecionar se o usuário não tiver acesso
+            toast({
+              title: "Acesso restrito",
+              description: "Este treino não está disponível na sua conta gratuita. Faça upgrade para o plano premium para acessar todos os seus treinos.",
+              variant: "destructive",
+            })
+            router.push("/dashboard/train")
+            return
+          }
+          
           // Buscar o treino específico
           const { data: workoutData, error: workoutError } = await supabase
             .from("workouts")
@@ -122,17 +143,36 @@ export default function TrainPage() {
           }
         } else {
           // Buscar todos os treinos disponíveis
+          // Usar a função list_available_workouts que já filtra conforme o tipo de usuário
           const { data, error } = await supabase
-            .from("workouts")
-            .select("*")
-            .eq("created_by", currentUser.id)
-            .order("created_at", { ascending: sortOrder === 'asc' })
+            .rpc('list_available_workouts', {
+              p_user_id: currentUser.id
+            })
 
           if (error) {
-            throw error
+            console.error("Erro ao buscar treinos com função:", error)
+            // Fallback para busca direta caso a função não exista
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from("workouts")
+              .select("*")
+              .eq("created_by", currentUser.id)
+              .order("created_at", { ascending: sortOrder === 'asc' })
+            
+            if (fallbackError) {
+              throw fallbackError
+            }
+            
+            setWorkouts(fallbackData || [])
+          } else {
+            // Ordenar conforme necessário
+            const sortedData = [...data].sort((a, b) => {
+              const aDate = a.created_at ? new Date(a.created_at).getTime() : 0
+              const bDate = b.created_at ? new Date(b.created_at).getTime() : 0
+              return sortOrder === 'asc' ? aDate - bDate : bDate - aDate
+            })
+            
+            setWorkouts(sortedData)
           }
-          
-          setWorkouts(data || [])
         }
       } catch (error) {
         console.error("Erro ao buscar dados:", error)

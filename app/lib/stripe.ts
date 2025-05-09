@@ -50,9 +50,10 @@ export const subscriptionPlans = [
 
 // Define as limitações dos usuários gratuitos para referência no frontend
 export const freeUserLimitations = [
-  'Limite de 3 treinos cadastrados',
+  'Limite de 1 treino cadastrado',
+  'Máximo de 7 exercícios por treino',
+  'Sem acesso à geração de treinos com IA',
   'Não pode ser cliente de personal trainers',
-  'Funcionalidades avançadas de IA limitadas',
   'Suporte padrão',
   'Perda de acesso a personals ao cancelar assinatura'
 ];
