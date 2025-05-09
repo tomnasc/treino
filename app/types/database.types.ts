@@ -101,6 +101,172 @@ export interface Database {
           }
         }
       }
+      feedbacks: {
+        Row: {
+          id: string
+          user_id: string
+          type: Database['public']['Enums']['feedback_type']
+          title: string
+          description: string
+          status: Database['public']['Enums']['feedback_status']
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type?: Database['public']['Enums']['feedback_type']
+          title: string
+          description: string
+          status?: Database['public']['Enums']['feedback_status']
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: Database['public']['Enums']['feedback_type']
+          title?: string
+          description?: string
+          status?: Database['public']['Enums']['feedback_status']
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: {
+          user: {
+            foreignKeyName: "feedbacks_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        }
+      }
+      feedback_responses: {
+        Row: {
+          id: string
+          feedback_id: string
+          user_id: string
+          message: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          feedback_id: string
+          user_id: string
+          message: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          feedback_id?: string
+          user_id?: string
+          message?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: {
+          feedback: {
+            foreignKeyName: "feedback_responses_feedback_id_fkey"
+            columns: ["feedback_id"]
+            referencedRelation: "feedbacks"
+            referencedColumns: ["id"]
+          }
+          user: {
+            foreignKeyName: "feedback_responses_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        }
+      }
+      feedback_attachments: {
+        Row: {
+          id: string
+          feedback_id: string
+          file_path: string
+          file_name: string
+          file_type: string
+          file_size: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          feedback_id: string
+          file_path: string
+          file_name: string
+          file_type: string
+          file_size: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          feedback_id?: string
+          file_path?: string
+          file_name?: string
+          file_type?: string
+          file_size?: number
+          created_at?: string | null
+        }
+        Relationships: {
+          feedback: {
+            foreignKeyName: "feedback_attachments_feedback_id_fkey"
+            columns: ["feedback_id"]
+            referencedRelation: "feedbacks"
+            referencedColumns: ["id"]
+          }
+        }
+      }
+      trainer_requests: {
+        Row: {
+          id: string
+          user_id: string
+          description: string
+          certification_file_path: string | null
+          certification_file_name: string | null
+          certification_file_type: string | null
+          certification_file_size: number | null
+          status: Database['public']['Enums']['trainer_request_status']
+          admin_notes: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          description: string
+          certification_file_path?: string | null
+          certification_file_name?: string | null
+          certification_file_type?: string | null
+          certification_file_size?: number | null
+          status?: Database['public']['Enums']['trainer_request_status']
+          admin_notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          description?: string
+          certification_file_path?: string | null
+          certification_file_name?: string | null
+          certification_file_type?: string | null
+          certification_file_size?: number | null
+          status?: Database['public']['Enums']['trainer_request_status']
+          admin_notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: {
+          user: {
+            foreignKeyName: "trainer_requests_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        }
+      }
       exercises: {
         Row: {
           id: string
@@ -363,6 +529,9 @@ export interface Database {
     }
     Enums: {
       user_role: "free" | "premium" | "personal" | "admin"
+      feedback_type: "error" | "suggestion" | "other"
+      feedback_status: "open" | "in_progress" | "closed" | "reopened"
+      trainer_request_status: "pending" | "approved" | "rejected"
     }
   }
 }
@@ -377,3 +546,11 @@ export type MuscleGroup = Database['public']['Tables']['muscle_groups']['Row']
 export type TrainingGoal = Database['public']['Tables']['training_goals']['Row']
 export type WorkoutExercise = Database['public']['Tables']['workout_exercises']['Row']
 export type AISettings = Database['public']['Tables']['ai_settings']['Row']
+
+export type Feedback = Database['public']['Tables']['feedbacks']['Row']
+export type FeedbackResponse = Database['public']['Tables']['feedback_responses']['Row']
+export type FeedbackAttachment = Database['public']['Tables']['feedback_attachments']['Row']
+export type TrainerRequest = Database['public']['Tables']['trainer_requests']['Row']
+export type FeedbackType = Database['public']['Enums']['feedback_type']
+export type FeedbackStatus = Database['public']['Enums']['feedback_status']
+export type TrainerRequestStatus = Database['public']['Enums']['trainer_request_status']

@@ -19,7 +19,9 @@ import {
   AlertCircle,
   Database,
   Dumbbell,
-  Star
+  Star,
+  MessageSquare,
+  ArrowRight
 } from "lucide-react"
 import Link from "next/link"
 
@@ -830,6 +832,36 @@ export default function AdminPage() {
               </TableBody>
             </Table>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="p-5">
+          <CardTitle>
+            <div className="flex items-center space-x-2">
+              <MessageSquare className="h-6 w-6 text-primary" />
+              <span>Gerenciamento de Feedback</span>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Visualize e gerencie feedbacks dos usuários e solicitações de personal trainer
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-5 pb-5">
+          <Link href="/dashboard/settings/admin/feedback-management" className="group flex items-center justify-between p-3 rounded-md hover:bg-accent transition-colors duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-primary/10 text-primary">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-medium tracking-tight">Gerenciamento de Feedback</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Visualize e gerencie feedbacks dos usuários e solicitações de personal trainer
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Link>
         </CardContent>
       </Card>
     </div>

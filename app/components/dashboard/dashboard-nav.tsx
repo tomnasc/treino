@@ -14,7 +14,9 @@ import {
   Users,
   Sparkles,
   ShieldAlert,
-  TrendingUp
+  TrendingUp,
+  MessageSquare,
+  User
 } from "lucide-react"
 
 import { cn } from "@/app/lib/utils"
@@ -78,6 +80,22 @@ export function DashboardNav({ user, onItemClick }: DashboardNavProps) {
             icon: Users,
             href: "/dashboard/clients",
             pattern: /^\/dashboard\/clients/,
+          } as const,
+        ]
+      : []),
+    {
+      label: "Feedback",
+      icon: MessageSquare,
+      href: "/dashboard/feedback",
+      pattern: /^\/dashboard\/feedback/,
+    },
+    ...(user?.role !== "personal" && user?.role !== "admin"
+      ? [
+          {
+            label: "Torne-se Personal",
+            icon: User,
+            href: "/dashboard/personal-request",
+            pattern: /^\/dashboard\/personal-request/,
           } as const,
         ]
       : []),
