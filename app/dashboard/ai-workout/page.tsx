@@ -12,7 +12,7 @@ import { useToast } from "@/app/hooks/use-toast"
 import { getCurrentUser } from "@/app/lib/auth"
 import { generateWorkoutPlan, parseWorkoutPlan, WorkoutGenerationInput } from "@/app/lib/huggingface"
 import { supabase } from "@/app/lib/supabase"
-import { AISettings, TrainingGoal } from "@/app/types/database.types"
+import { AISettings, TrainingGoal, UserRole } from "@/app/types/database.types"
 import Link from "next/link"
 
 export default function AIWorkoutPage() {
@@ -49,7 +49,8 @@ export default function AIWorkoutPage() {
           return
         }
         
-        setIsPremiumUser(currentUser.role !== 'free')
+        // Correção: Verificando se o role não é 'free' usando uma tipagem segura
+        setIsPremiumUser(currentUser.role !== 'free' as UserRole)
         
         // Buscar configurações do usuário
         const { data: settings, error: settingsError } = await supabase
@@ -98,7 +99,7 @@ export default function AIWorkoutPage() {
       if (!currentUser) return
       
       // Verificar novamente se o usuário é premium
-      if (currentUser.role === 'free') {
+      if (currentUser.role === 'free' as UserRole) {
         toast({
           title: "Recurso premium",
           description: "A geração de treinos com IA é exclusiva para assinantes premium. Faça upgrade para acessar este recurso.",
