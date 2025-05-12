@@ -8,13 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Badge } from "@/app/components/ui/badge"
 import { 
-  Table, 
+  ScrollableTable,
   TableBody, 
   TableCell, 
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/app/components/ui/table"
+} from "@/app/components/ui/scrollable-table"
 import { useToast } from "@/app/hooks/use-toast"
 import { supabase } from "@/app/lib/supabase"
 import { Workout } from "@/app/types/database.types"
@@ -173,89 +173,87 @@ export function FeaturedWorkouts({ maxFeatured = 10 }: FeaturedWorkoutsProps) {
             </p>
           </div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Criador</TableHead>
-                  <TableHead>Objetivo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[100px]">Ações</TableHead>
+          <ScrollableTable>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Criador</TableHead>
+                <TableHead>Objetivo</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredWorkouts.map((workout) => (
+                <TableRow key={workout.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-1">
+                      {workout.is_featured && (
+                        <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                      )}
+                      {workout.name}
+                    </div>
+                    {workout.description && (
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                        {workout.description}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        {workout.creator?.full_name || "Usuário removido"}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {workout.goal ? (
+                      <Badge variant="outline">{workout.goal.name}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">Sem objetivo</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {workout.is_featured ? (
+                      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-500">
+                        Destacado
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Normal</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={updatingId === workout.id}
+                      onClick={() => toggleFeatured(workout)}
+                      className={
+                        workout.is_featured 
+                          ? "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100"
+                          : ""
+                      }
+                    >
+                      {updatingId === workout.id ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : workout.is_featured ? (
+                        <>
+                          <StarOff className="mr-2 h-4 w-4" />
+                          Remover
+                        </>
+                      ) : (
+                        <>
+                          <Star className="mr-2 h-4 w-4" />
+                          Destacar
+                        </>
+                      )}
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredWorkouts.map((workout) => (
-                  <TableRow key={workout.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-1">
-                        {workout.is_featured && (
-                          <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                        )}
-                        {workout.name}
-                      </div>
-                      {workout.description && (
-                        <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                          {workout.description}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          {workout.creator?.full_name || "Usuário removido"}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {workout.goal ? (
-                        <Badge variant="outline">{workout.goal.name}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">Sem objetivo</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {workout.is_featured ? (
-                        <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-500">
-                          Destacado
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Normal</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={updatingId === workout.id}
-                        onClick={() => toggleFeatured(workout)}
-                        className={
-                          workout.is_featured 
-                            ? "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100"
-                            : ""
-                        }
-                      >
-                        {updatingId === workout.id ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        ) : workout.is_featured ? (
-                          <>
-                            <StarOff className="mr-2 h-4 w-4" />
-                            Remover
-                          </>
-                        ) : (
-                          <>
-                            <Star className="mr-2 h-4 w-4" />
-                            Destacar
-                          </>
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </ScrollableTable>
         )}
       </CardContent>
     </Card>

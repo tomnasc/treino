@@ -73,4 +73,28 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Estilos para garantir rolagem em dispositivos móveis */
+@layer components {
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    scrollbar-width: thin;
+  }
+  
+  /* Estilo específico para telas de gerenciamento de conteúdo */
+  .overflow-x-auto table {
+    width: 100%;
+    table-layout: fixed;
+  }
+  
+  /* Garantir que a última coluna de ações tenha espaço suficiente */
+  .overflow-x-auto th:last-child, 
+  .overflow-x-auto td:last-child {
+    width: 100px;
+    min-width: 100px;
+  }
 } 

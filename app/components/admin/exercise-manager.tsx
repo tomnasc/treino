@@ -15,13 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { 
-  Table, 
+  ScrollableTable,
   TableBody, 
   TableCell, 
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/app/components/ui/table"
+} from "@/app/components/ui/scrollable-table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -330,51 +330,49 @@ export function ExerciseManager({ userId }: ExerciseManagerProps) {
             </p>
           </div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Grupo Muscular</TableHead>
-                  <TableHead>Público</TableHead>
-                  <TableHead className="w-[100px]">Ações</TableHead>
+          <ScrollableTable>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Grupo Muscular</TableHead>
+                <TableHead>Público</TableHead>
+                <TableHead className="w-[100px]">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredExercises.map((exercise) => (
+                <TableRow key={exercise.id}>
+                  <TableCell className="font-medium">{exercise.name}</TableCell>
+                  <TableCell>{getMuscleGroupName(exercise)}</TableCell>
+                  <TableCell>
+                    {exercise.is_public ? (
+                      <span className="text-green-600 text-sm">Sim</span>
+                    ) : (
+                      <span className="text-gray-500 text-sm">Não</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(exercise)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setExerciseToDelete(exercise)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredExercises.map((exercise) => (
-                  <TableRow key={exercise.id}>
-                    <TableCell className="font-medium">{exercise.name}</TableCell>
-                    <TableCell>{getMuscleGroupName(exercise)}</TableCell>
-                    <TableCell>
-                      {exercise.is_public ? (
-                        <span className="text-green-600 text-sm">Sim</span>
-                      ) : (
-                        <span className="text-gray-500 text-sm">Não</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(exercise)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setExerciseToDelete(exercise)}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </ScrollableTable>
         )}
       </CardContent>
       

@@ -62,7 +62,7 @@ export default function ContentManagementPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full mx-auto space-y-6 px-2 sm:px-4 md:px-6 overflow-hidden">
       <div className="flex items-center gap-2">
         <Button 
           variant="ghost" 
