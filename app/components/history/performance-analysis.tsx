@@ -18,23 +18,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select"
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis
-} from "recharts"
+// Importar cada componente do recharts individualmente para evitar problemas de inicialização
+import { ResponsiveContainer } from "recharts"
+import { RadarChart } from "recharts"
+import { Radar } from "recharts"
+import { PolarGrid } from "recharts"
+import { PolarAngleAxis } from "recharts"
+import { PolarRadiusAxis } from "recharts"
+import { LineChart } from "recharts"
+import { Line } from "recharts"
+import { BarChart } from "recharts"
+import { Bar } from "recharts"
+import { XAxis } from "recharts"
+import { YAxis } from "recharts"
+import { CartesianGrid } from "recharts"
+import { Tooltip } from "recharts"
+import { Legend } from "recharts"
 import { ArrowUpRight, ArrowDownRight, Clock, Calendar, BarChart3, TrendingUp, Award, Target } from "lucide-react"
 import { Badge } from "@/app/components/ui/badge"
 import { Progress } from "@/app/components/ui/progress"
@@ -58,7 +57,8 @@ interface WorkoutHistoryItem {
 interface ExerciseHistoryItem {
   id: string
   workout_history_id: string
-  exercise_id: string
+  workout_exercise_id: string  // Atualizado para usar workout_exercise_id
+  exercise_id?: string  // Opcional, adicionado para compatibilidade
   sets_completed: number
   max_weight: number | null
   exercise: Exercise
@@ -69,6 +69,15 @@ interface PerformanceAnalysisProps {
 }
 
 type TrendDirection = "up" | "down" | "neutral";
+
+// Funções auxiliares
+const subDays = (date: Date, days: number) => {
+  return new Date(date.getTime() - days * 24 * 60 * 60 * 1000)
+}
+
+const startOfWeek = (date: Date, options: { locale: Locale }) => {
+  return subDays(date, date.getDay())
+}
 
 // Gráfico de radar para equilibrio de grupos musculares
 const RadarChartComponent = ({ data }: { data: any[] }) => {
@@ -217,36 +226,41 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
           .from("exercise_history")
           .select(`
             *,
-            exercise_id
+            workout_exercise_id,
+            workout_exercise:workout_exercises(
+              id,
+              exercise_id,
+              exercise:exercises(
+                id, 
+                name,
+                muscle_group_id
+              )
+            )
           `)
           .in("workout_history_id", historyData.map(item => item.id))
           
         if (exercisesError) throw exercisesError
         
-        // Buscar informações de exercícios separadamente
-        let exercisesWithDetails = [];
-        if (exercisesData && exercisesData.length > 0) {
-          const exerciseIds = exercisesData.map(item => item.exercise_id);
+        // Processamento dos dados para formato compatível
+        const exercisesWithDetails = exercisesData ? exercisesData.map(item => {
+          // Verificar se workout_exercise e exercise existem e são objetos válidos
+          if (!item.workout_exercise || 
+              typeof item.workout_exercise !== 'object' ||
+              !item.workout_exercise.exercise ||
+              typeof item.workout_exercise.exercise !== 'object') {
+            return item;
+          }
           
-          const { data: exerciseDetails, error: exerciseDetailsError } = await supabase
-            .from("exercises")
-            .select(`
-              *,
-              muscle_group_id
-            `)
-            .in("id", exerciseIds)
-            
-          if (exerciseDetailsError) throw exerciseDetailsError
+          // Extrair o exercise do workout_exercise para simplificar o acesso
+          const exercise = item.workout_exercise.exercise;
+          const exercise_id = item.workout_exercise.exercise_id;
           
-          // Combinar as informações
-          exercisesWithDetails = exercisesData.map(item => {
-            const exercise = exerciseDetails?.find(ex => ex.id === item.exercise_id);
-            return {
-              ...item,
-              exercise
-            };
-          });
-        }
+          return {
+            ...item,
+            exercise_id,  // Adicionar exercise_id diretamente no objeto principal
+            exercise      // Adicionar exercise diretamente no objeto principal
+          };
+        }) : [];
         
         setExerciseHistory(exercisesWithDetails || [])
         
@@ -356,6 +370,8 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
       if (!item.exercise || !item.max_weight) return
       
       const exerciseId = item.exercise_id
+      if (!exerciseId) return
+      
       const workoutDate = workoutHistory.find(w => w.id === item.workout_history_id)?.started_at
       
       if (!workoutDate) return
@@ -407,9 +423,6 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
   // Gerar dados de equilíbrio muscular
   const muscleBalanceData = useMemo(() => {
     if (!exerciseHistory.length || !muscleGroups.length) return []
-    
-    // Criar mapa de exercício para grupo muscular
-    const exerciseToGroup: Record<string, string> = {}
     
     // Contar treinos por grupo muscular
     const groupCounts: Record<string, number> = {}
@@ -531,15 +544,6 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
     return timeline
   }, [workoutHistory, strengthProgress])
   
-  // Funções auxiliares
-  const subDays = (date: Date, days: number) => {
-    return new Date(date.getTime() - days * 24 * 60 * 60 * 1000)
-  }
-  
-  const startOfWeek = (date: Date, options: { locale: Locale }) => {
-    return subDays(date, date.getDay())
-  }
-  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -548,7 +552,11 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
     )
   }
   
-  if (workoutHistory.length === 0) {
+  const noDataAvailable = !workoutHistory || workoutHistory.length === 0
+  const hasValidWorkoutData = workoutHistory && workoutHistory.length > 0
+  const hasExerciseData = exerciseHistory && exerciseHistory.length > 0
+  
+  if (noDataAvailable) {
     return (
       <Card>
         <CardHeader>
