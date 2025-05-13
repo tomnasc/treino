@@ -9,6 +9,7 @@ import { Separator } from "@/app/components/ui/separator"
 import { useToast } from "@/app/hooks/use-toast"
 import { getCurrentUser } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
+import { formatDuration } from "@/app/lib/utils"
 
 type WorkoutStat = {
   workout_id: string
@@ -45,6 +46,7 @@ export default function ProgressPage() {
   const [completionRate, setCompletionRate] = useState(0)
   const [totalDuration, setTotalDuration] = useState(0)
   const [avgDuration, setAvgDuration] = useState(0)
+  const [completedCount, setCompletedCount] = useState(0)
 
   useEffect(() => {
     async function loadData() {
@@ -75,13 +77,39 @@ export default function ProgressPage() {
         
         // Calcular estatísticas gerais
         const totalCount = workoutData?.length || 0
-        const completedCount = workoutData?.filter(w => w.completed).length || 0
+        const completedWorkouts = workoutData?.filter(w => w.completed) || []
+
+        const completedCount = completedWorkouts.length
         const totalTime = workoutData?.reduce((acc, w) => acc + (w.duration || 0), 0) || 0
-        
+        const completedTime = completedWorkouts.reduce((acc, w) => acc + (w.duration || 0), 0)
+
+        // Logs para debug
+        console.log('DEBUG - Dados carregados:', { 
+          workoutData, 
+          totalCount, 
+          completedWorkouts, 
+          completedCount,
+          totalTime,
+          completedTime 
+        })
+
         setTotalWorkouts(totalCount)
         setCompletionRate(totalCount > 0 ? (completedCount / totalCount) * 100 : 0)
-        setTotalDuration(totalTime)
-        setAvgDuration(totalCount > 0 ? totalTime / totalCount : 0)
+        setTotalDuration(totalTime) // Tempo total em minutos
+        setCompletedCount(completedCount)
+
+        // Cálculo correto da duração média por treino CONCLUÍDO
+        const calculatedAvgDuration = completedCount > 0 ? completedTime / completedCount : 0
+        console.log('DEBUG - Média calculada:', calculatedAvgDuration)
+        
+        // Se a média calculada for muito diferente de 3303, considere isso um erro e use o valor calculado
+        // Caso contrário, se a média for próxima de 3303 (o que é improvável para treinos reais), use o valor calculado
+        if (Math.abs(calculatedAvgDuration - 3303) > 10) {
+          setAvgDuration(calculatedAvgDuration)
+        } else {
+          console.error('DEBUG - Valor suspeito de 3303 detectado na média. Usando valor calculado:', calculatedAvgDuration)
+          setAvgDuration(calculatedAvgDuration)
+        }
         
         // Agrupar por treino
         const workoutStatsMap = new Map<string, WorkoutStat>()
@@ -266,6 +294,10 @@ export default function ProgressPage() {
     loadData()
   }, [router, toast])
 
+  useEffect(() => {
+    console.log('DEBUG - Valores atuais:', { totalWorkouts, completionRate, totalDuration, avgDuration })
+  }, [totalWorkouts, completionRate, totalDuration, avgDuration])
+
   if (loading) {
     return (
       <div className="flex justify-center p-8">
@@ -319,7 +351,11 @@ export default function ProgressPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.floor(totalDuration / 60)} horas</div>
+            <div className="text-2xl font-bold">
+              {totalDuration < 60 
+                ? `${totalDuration} minutos` 
+                : formatDuration(totalDuration * 60)} {/* multiplicar por 60 para converter de minutos para segundos */}
+            </div>
             <p className="text-xs text-muted-foreground">
               Tempo treinando
             </p>
@@ -333,7 +369,9 @@ export default function ProgressPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.floor(avgDuration)} min</div>
+            <div className="text-2xl font-bold">
+              {Math.round(avgDuration)} min
+            </div>
             <p className="text-xs text-muted-foreground">
               Tempo médio por treino
             </p>

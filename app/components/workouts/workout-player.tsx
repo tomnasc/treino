@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -14,9 +14,17 @@ import {
   Video,
   AlertTriangle,
   ChevronRight,
-  List
+  List,
+  MonitorSmartphone
 } from "lucide-react"
 import Image from "next/image"
+import { useWakeLock } from "react-screen-wake-lock"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider
+} from "@/app/components/ui/tooltip"
 
 import { Button } from "@/app/components/ui/button"
 import { Exercise, Workout, WorkoutExercise } from "@/app/types/database.types"
@@ -55,6 +63,9 @@ interface WorkoutPlayerProps {
 
 export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerProps) {
   const { toast } = useToast()
+  const { isSupported, request, release } = useWakeLock()
+  const [wakeLockEnabled, setWakeLockEnabled] = useState(false)
+  const wakeLockRef = useRef<any>(null)
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const [currentSetIndex, setCurrentSetIndex] = useState(0)
   const [isResting, setIsResting] = useState(false)
@@ -75,6 +86,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   const [isButtonEnabled, setIsButtonEnabled] = useState(false)
   const [showPendingExercisesDialog, setShowPendingExercisesDialog] = useState(false)
   const [pendingExercisesList, setPendingExercisesList] = useState<(WorkoutExercise & { exercise: Exercise })[]>([])
+  const [userInteracted, setUserInteracted] = useState(false)
 
   // Ref para armazenar valores dos inputs como backup
   const inputValuesRef = useRef<Record<string, string>>({});
@@ -90,6 +102,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
   // Adicionar referência para controlar exibição de toasts
   const toastShownRef = useRef<Record<string, boolean>>({});
+
+  // Ref para armazenar os elementos de áudio pré-carregados
+  const audioElements = useRef<Record<string, HTMLAudioElement>>({});
+
+  // AudioContext para solução alternativa de reprodução de som
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
   const currentExercise = exercises[currentExerciseIndex]
   const totalExercises = exercises.length
@@ -116,6 +134,62 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       toastShownRef.current[key] = false;
     }, 5000);
   };
+
+  // Efeito para ativar o WakeLock e manter a tela ativa durante o treino
+  useEffect(() => {
+    const enableWakeLock = async () => {
+      if (isSupported) {
+        try {
+          const wakeLock = await request();
+          wakeLockRef.current = wakeLock;
+          setWakeLockEnabled(true);
+          console.log('WakeLock ativado: tela permanecerá ativa durante o treino');
+        } catch (err) {
+          console.error('Erro ao ativar WakeLock:', err);
+          
+          // Notificar o usuário sobre o problema
+          showToastOnce('wakelock-error', {
+            title: "Aviso",
+            description: "Não foi possível manter a tela ativa automaticamente. Você pode precisar desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
+            variant: "default",
+          });
+        }
+      } else {
+        console.log('WakeLock não é suportado neste navegador/dispositivo');
+        
+        // Notificar o usuário em dispositivos não suportados
+        showToastOnce('wakelock-not-supported', {
+          title: "Informação",
+          description: "Seu dispositivo não suporta manter a tela ativa automaticamente. Considere desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
+          variant: "default",
+        });
+      }
+    };
+
+    // Ativar WakeLock quando o componente for montado
+    enableWakeLock();
+
+    // Evento para reativar o WakeLock quando o documento se tornar visível novamente
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && !wakeLockEnabled && isSupported) {
+        enableWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup: liberar o WakeLock quando o componente for desmontado
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release()
+          .then(() => console.log('WakeLock liberado'))
+          .catch((err: any) => console.error('Erro ao liberar WakeLock:', err));
+        wakeLockRef.current = null;
+        setWakeLockEnabled(false);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isSupported, request, release]);
 
   // Verificar se há um estado salvo do treino - VERSÃO SIMPLIFICADA E CORRIGIDA
   useEffect(() => {
@@ -428,7 +502,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             playSound('rest-complete');
           }
         }
-      }, 500) // Verificar a cada meio segundo para maior precisão
+      }, 1000) // Alterado de 500ms para 1000ms para contar corretamente cada segundo
     }
 
     return () => {
@@ -454,19 +528,224 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     };
   }, [workoutStartTime, isPaused, pausedTime]);
 
+  // Função para registrar interação do usuário
+  const registerUserInteraction = useCallback(() => {
+    if (!userInteracted) {
+      console.log("Primeira interação do usuário detectada");
+      setUserInteracted(true);
+      
+      // Tentar habilitar sons após interação
+      if (!audioContext) {
+        initAudioContext();
+      }
+    }
+  }, [userInteracted]);
+
+  // Adicionar detector de interação do usuário
+  useEffect(() => {
+    const interactionEvents = ['click', 'touchstart', 'keydown'];
+    
+    const handleUserInteraction = () => {
+      registerUserInteraction();
+    };
+    
+    interactionEvents.forEach(event => {
+      document.addEventListener(event, handleUserInteraction, { once: true });
+    });
+    
+    return () => {
+      interactionEvents.forEach(event => {
+        document.removeEventListener(event, handleUserInteraction);
+      });
+    };
+  }, [registerUserInteraction]);
+  
+  // Inicializar AudioContext após interação
+  const initAudioContext = useCallback(() => {
+    try {
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      setAudioContext(context);
+      console.log("AudioContext inicializado com sucesso");
+      
+      // Pré-carregar os sons após a interação do usuário
+      const soundPaths = {
+        'rest-complete': '/sounds/rest-complete.mp3',
+        'exercise-complete': '/sounds/exercise-complete.mp3',
+        'set-complete': '/sounds/set-complete.mp3'
+      };
+      
+      // Pré-carregar todos os sons
+      Object.entries(soundPaths).forEach(([key, path]) => {
+        try {
+          const audio = new Audio(path);
+          audio.preload = 'auto';
+          audio.load();
+          
+          // Armazenar o elemento de áudio para uso posterior
+          audioElements.current[key] = audio;
+          
+          console.log(`Som ${key} pré-carregado`);
+        } catch (error) {
+          console.error(`Erro ao pré-carregar som ${key}:`, error);
+        }
+      });
+    } catch (error) {
+      console.error("Erro ao inicializar AudioContext:", error);
+    }
+  }, []);
+  
+  // Função para reproduzir som usando AudioContext (mais compatível)
+  const playTone = useCallback((frequency: number, duration: number) => {
+    if (!audioContext) return;
+    
+    try {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      gainNode.gain.value = 0.5;
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.start();
+      
+      setTimeout(() => {
+        oscillator.stop();
+        oscillator.disconnect();
+        gainNode.disconnect();
+      }, duration);
+    } catch (error) {
+      console.error("Erro ao reproduzir tom:", error);
+    }
+  }, [audioContext]);
+
+  // Função auxiliar para vibrar o dispositivo (usado como fallback para o som)
+  const vibrateDevice = (pattern: number[]) => {
+    // Apenas tentar vibrar se o usuário já interagiu com a página
+    if (!userInteracted) {
+      console.log("Vibração bloqueada - usuário ainda não interagiu com a página");
+      return;
+    }
+    
+    try {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(pattern);
+      }
+    } catch (error) {
+      console.error('Erro ao tentar vibrar dispositivo:', error);
+    }
+  };
+
   // Função auxiliar para tocar sons
   const playSound = (type: 'rest-complete' | 'exercise-complete' | 'set-complete') => {
+    // Padrões de vibração diferentes para cada tipo de alerta (em milissegundos)
+    const vibrationPatterns = {
+      'rest-complete': [200, 100, 200],           // Vibração média (duas pulsações)
+      'exercise-complete': [300, 100, 300, 100, 300], // Vibração longa (três pulsações)
+      'set-complete': [100]                      // Vibração curta (uma pulsação)
+    };
+    
+    // Frequências para diferentes tipos de sons (em Hz)
+    const frequencies = {
+      'rest-complete': 880,  // Lá5
+      'exercise-complete': 659.25, // Mi5
+      'set-complete': 440   // Lá4
+    };
+    
+    // Se o usuário não interagiu ainda, não tentar tocar sons
+    // mas armazenar que precisamos tocar um som quando possível
+    if (!userInteracted) {
+      console.log(`Som ${type} bloqueado - usuário ainda não interagiu com a página`);
+      
+      // Mostrar uma dica na primeira vez que isso ocorrer
+      showToastOnce('audio-interaction-required', {
+        title: "Toque na tela",
+        description: "Para ativar os sons e vibrações do app, interaja com a tela pelo menos uma vez.",
+        duration: 5000
+      });
+      
+      return;
+    }
+    
+    // Tentar vibrar o dispositivo (principalmente para dispositivos móveis)
+    vibrateDevice(vibrationPatterns[type]);
+    
+    // Tentar reproduzir um tom usando AudioContext se disponível
+    if (audioContext) {
+      // Duração e frequência diferentes para cada tipo
+      const duration = type === 'set-complete' ? 150 : 
+                       type === 'rest-complete' ? 300 : 500;
+      
+      playTone(frequencies[type], duration);
+    }
+    
     try {
-      const audio = new Audio(
-        type === 'rest-complete' 
-          ? '/sounds/rest-complete.mp3' 
-          : type === 'exercise-complete'
-            ? '/sounds/exercise-complete.mp3'
-            : '/sounds/set-complete.mp3'
-      )
-      audio.play()
+      // Tentar usar o elemento de áudio pré-carregado primeiro
+      const preloadedAudio = audioElements.current[type];
+      
+      if (preloadedAudio) {
+        // Reiniciar a posição do áudio para permitir reprodução repetida
+        preloadedAudio.currentTime = 0;
+        
+        // Definir volume explicitamente
+        preloadedAudio.volume = 1.0;
+        
+        // Reproduzir o som pré-carregado
+        const playPromise = preloadedAudio.play();
+        
+        // Tratar a promise retornada por .play()
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.error(`Erro ao reproduzir som pré-carregado ${type}:`, error);
+            // Se falhar, tentar o método anterior
+            playFallbackSound();
+          });
+        }
+      } else {
+        // Se não tiver o som pré-carregado, usar o método anterior
+        playFallbackSound();
+      }
     } catch (error) {
-      console.error('Erro ao tocar som:', error)
+      console.error('Erro ao configurar áudio:', error);
+      playFallbackSound();
+    }
+    
+    // Função para reproduzir o som usando o método alternativo
+    function playFallbackSound() {
+      try {
+        const sound = {
+          'rest-complete': '/sounds/rest-complete.mp3',
+          'exercise-complete': '/sounds/exercise-complete.mp3',
+          'set-complete': '/sounds/set-complete.mp3'
+        };
+        
+        const audio = new Audio(sound[type]);
+        
+        // Adicionar event listeners para detectar erros e sucesso
+        audio.addEventListener('error', (e) => {
+          console.error(`Erro ao carregar som ${type}:`, e);
+        });
+        
+        // Pré-carregar o áudio
+        audio.load();
+        
+        // Definir volume explicitamente
+        audio.volume = 1.0;
+        
+        // Reproduzir o som
+        const playPromise = audio.play();
+        
+        // Tratar a promise retornada por .play()
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.error(`Erro ao reproduzir som ${type}:`, error);
+          });
+        }
+      } catch (finalError) {
+        console.error('Erro final ao tentar tocar som:', finalError);
+      }
     }
   }
 
@@ -696,23 +975,26 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   };
 
   const handleSkipRest = () => {
-    setIsResting(false)
-    setRestEndTime(null)
+    registerUserInteraction(); // Registrar interação do usuário
+    setIsResting(false);
+    setRestEndTime(null);
   }
 
   const handleSkipExercise = async () => {
+    registerUserInteraction(); // Registrar interação do usuário
     // Salvar o progresso atual
-    await saveExerciseHistory(currentExercise.id)
+    await saveExerciseHistory(currentExercise.id);
     
     if (isLastExercise) {
-      completeWorkout()
+      completeWorkout();
     } else {
-      setCurrentExerciseIndex(prev => prev + 1)
-      setCurrentSetIndex(0)
+      setCurrentExerciseIndex(prev => prev + 1);
+      setCurrentSetIndex(0);
     }
   }
 
   const togglePause = () => {
+    registerUserInteraction(); // Registrar interação do usuário
     setIsPaused(prev => {
       const newPausedState = !prev;
       
@@ -731,6 +1013,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         if (isResting && restTimeLeft > 0) {
           // Recalcular o tempo de término baseado no tempo restante
           setRestEndTime(Date.now() + restTimeLeft * 1000);
+        }
+        
+        // Se estiver saindo do modo pausado e estiver em um exercício baseado em tempo
+        if (exerciseType === 'time' && isExerciseTimerRunning && exerciseTimeLeft > 0) {
+          // Recalcular o tempo de término baseado no tempo restante
+          setExerciseEndTime(Date.now() + exerciseTimeLeft * 1000);
         }
       }
       
@@ -986,13 +1274,25 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     try {
       setIsFinishing(true)
       
+      // Liberar o WakeLock ao finalizar o treino
+      if (wakeLockRef.current) {
+        try {
+          await wakeLockRef.current.release();
+          wakeLockRef.current = null;
+          setWakeLockEnabled(false);
+          console.log('WakeLock liberado ao finalizar treino');
+        } catch (err) {
+          console.error('Erro ao liberar WakeLock:', err);
+        }
+      }
+      
       // Marcar o treino como concluído
       const { error } = await supabase
         .from("workout_history")
         .update({
           completed: true,
           finished_at: new Date().toISOString(),
-          duration: workoutDuration
+          duration: Math.round(workoutDuration / 60) // Converter de segundos para minutos
         })
         .eq("id", workoutHistoryId)
         
@@ -1103,25 +1403,32 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     // Resetar estado do botão
     setIsButtonEnabled(false);
     
-    // Se for exercício por tempo, configurar o timer
+    // Se for exercício por tempo, apenas configurar o tempo inicial
     if (exerciseType === 'time') {
       const timeInSeconds = parseInt(currentExercise.time || '0');
       setExerciseTimeLeft(timeInSeconds);
-      setExerciseEndTime(Date.now() + timeInSeconds * 1000);
-      setIsExerciseTimerRunning(true);
-      setIsPaused(false);
+      // Não iniciar automaticamente o cronômetro - aguardar clique no botão "Iniciar"
+      setExerciseEndTime(null);
+      setIsExerciseTimerRunning(false);
     }
   }, [currentExercise, currentSetIndex]);
 
   // Função para iniciar o timer do exercício
   const startExerciseTimer = () => {
     if (exerciseType === 'time') {
-      const timeInSeconds = parseInt(currentExercise.time || '0');
+      // Se o tempo já foi alterado (ex: após pausar), usar o valor atual
+      // caso contrário, usar o tempo definido no exercício
+      const timeInSeconds = exerciseTimeLeft > 0 ? 
+        exerciseTimeLeft : 
+        parseInt(currentExercise.time || '0');
+      
       setExerciseTimeLeft(timeInSeconds);
       setExerciseEndTime(Date.now() + timeInSeconds * 1000);
       setIsExerciseTimerRunning(true);
       setIsPaused(false);
       setIsButtonEnabled(false);
+      
+      console.log(`Cronômetro iniciado: ${timeInSeconds} segundos`);
     }
   };
 
@@ -1217,7 +1524,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             clearInterval(timer);
           }
         }
-      }, 500);
+      }, 1000); // Alterado de 500ms para 1000ms para contar corretamente cada segundo
     }
     
     return () => {
@@ -1256,8 +1563,42 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       setIsExerciseTimerRunning(false);
       setIsPaused(false);
       setIsButtonEnabled(false);
+      
+      // Mostrar dica após reiniciar
+      showToastOnce('timer-reset', {
+        title: "Cronômetro reiniciado",
+        description: "Clique em 'Iniciar' quando estiver pronto para começar o exercício."
+      });
     }
   };
+
+  // Limpar os recursos de áudio quando o componente for desmontado
+  useEffect(() => {
+    return () => {
+      // Limpar os elementos de áudio
+      Object.values(audioElements.current).forEach(audio => {
+        try {
+          audio.pause();
+          audio.src = '';
+        } catch (error) {
+          console.error('Erro ao limpar elemento de áudio:', error);
+        }
+      });
+      
+      audioElements.current = {};
+      
+      // Fechar o AudioContext se existir
+      if (audioContext) {
+        try {
+          if (audioContext.state !== 'closed') {
+            audioContext.close();
+          }
+        } catch (error) {
+          console.error('Erro ao fechar AudioContext:', error);
+        }
+      }
+    };
+  }, [audioContext]);
 
   if (!currentExercise) {
     return (
@@ -1306,6 +1647,20 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">{workout.name}</h2>
         <div className="flex items-center text-sm text-muted-foreground">
+          {isSupported && wakeLockEnabled && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center mr-2">
+                    <MonitorSmartphone className="h-4 w-4 text-green-500" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Tela permanecerá ativa durante o treino</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <Clock className="mr-1 h-4 w-4" />
           {formatTime(workoutDuration)}
         </div>
@@ -1359,9 +1714,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                   Série {currentSetIndex + 1} de {totalSets}
                 </CardDescription>
               </div>
-              <Button variant="outline" size="icon" onClick={togglePause}>
-                {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-              </Button>
+              {/* Mostrar botão de pausa apenas se não for exercício por tempo ou se o timer estiver rodando */}
+              {(exerciseType !== 'time' || isExerciseTimerRunning) && (
+                <Button variant="outline" size="icon" onClick={togglePause}>
+                  {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4 p-4 sm:p-6">
@@ -1393,11 +1751,14 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                       <h4 className="text-sm font-medium mb-2">Cronômetro</h4>
                       <div className="text-4xl font-bold mb-4">{formatTime(exerciseTimeLeft)}</div>
                       <div className="flex space-x-2 flex-wrap gap-2 justify-center">
-                        {!isExerciseTimerRunning && exerciseTimeLeft === parseInt(exerciseTime) ? (
+                        {!isExerciseTimerRunning ? (
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={startExerciseTimer}
+                            onClick={() => {
+                              registerUserInteraction();
+                              startExerciseTimer();
+                            }}
                             className="bg-primary text-primary-foreground hover:bg-primary/90"
                           >
                             <Play className="mr-2 h-4 w-4" />
@@ -1409,7 +1770,6 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                               variant="outline" 
                               size="sm" 
                               onClick={togglePause}
-                              disabled={!isExerciseTimerRunning && exerciseTimeLeft === 0}
                             >
                               {isPaused ? (
                                 <>
@@ -1426,7 +1786,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={resetExerciseTimer}
+                              onClick={() => {
+                                registerUserInteraction();
+                                resetExerciseTimer();
+                              }}
                             >
                               <RefreshCcw className="mr-2 h-4 w-4" />
                               Reiniciar
@@ -1580,7 +1943,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             </div>
             
             <Button 
-              onClick={handleCompleteSet} 
+              onClick={() => {
+                registerUserInteraction();
+                handleCompleteSet();
+              }} 
               className="w-full sm:w-auto mt-2 sm:mt-0"
               disabled={!isButtonEnabled && !isSaving}
             >

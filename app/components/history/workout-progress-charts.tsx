@@ -105,7 +105,7 @@ export function WorkoutProgressCharts({ workoutHistory }: WorkoutProgressChartsP
     
     return Object.entries(durationByWorkout).map(([name, data]) => ({
       name,
-      averageDuration: Math.round(data.totalDuration / data.count / 60), // Em minutos
+      averageDuration: Math.round(data.totalDuration / data.count), // Duração já está em minutos, não dividir por 60
     }))
   }, [filteredData])
   
@@ -363,8 +363,7 @@ export function WorkoutProgressCharts({ workoutHistory }: WorkoutProgressChartsP
               <span className="text-2xl font-bold">
                 {Math.round(
                   filteredData.reduce((acc, item) => acc + (item.duration || 0), 0) / 
-                  Math.max(filteredData.length, 1) / 
-                  60
+                  Math.max(filteredData.length, 1)
                 )}min
               </span>
               <span className="text-sm text-muted-foreground">Duração média</span>
