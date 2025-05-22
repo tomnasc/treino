@@ -103,12 +103,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   // Adicionar referência para controlar exibição de toasts
   const toastShownRef = useRef<Record<string, boolean>>({});
 
-  // Ref para armazenar os elementos de áudio pré-carregados
-  const audioElements = useRef<Record<string, HTMLAudioElement>>({});
-
-  // AudioContext para solução alternativa de reprodução de som
+  // AudioContext para reprodução de beeps
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
+  // Removemos a referência a elementos de áudio pré-carregados pois não os usamos mais
   const currentExercise = exercises[currentExerciseIndex]
   const totalExercises = exercises.length
   const totalSets = currentExercise ? currentExercise.sets : 0
@@ -567,28 +565,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       setAudioContext(context);
       console.log("AudioContext inicializado com sucesso");
       
-      // Pré-carregar os sons após a interação do usuário
-      const soundPaths = {
-        'rest-complete': '/sounds/rest-complete.mp3',
-        'exercise-complete': '/sounds/exercise-complete.mp3',
-        'set-complete': '/sounds/set-complete.mp3'
-      };
-      
-      // Pré-carregar todos os sons
-      Object.entries(soundPaths).forEach(([key, path]) => {
-        try {
-          const audio = new Audio(path);
-          audio.preload = 'auto';
-          audio.load();
-          
-          // Armazenar o elemento de áudio para uso posterior
-          audioElements.current[key] = audio;
-          
-          console.log(`Som ${key} pré-carregado`);
-        } catch (error) {
-          console.error(`Erro ao pré-carregar som ${key}:`, error);
-        }
-      });
+      // Não pré-carregamos mais arquivos de áudio, usamos apenas tons de beep
     } catch (error) {
       console.error("Erro ao inicializar AudioContext:", error);
     }
@@ -604,7 +581,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       oscillator.type = 'sine';
       oscillator.frequency.value = frequency;
-      gainNode.gain.value = 0.5;
+      gainNode.gain.value = 0.3; // Volume reduzido para não atrapalhar música
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
@@ -638,31 +615,30 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }
   };
 
-  // Função auxiliar para tocar sons
+  // Função auxiliar para tocar beeps em cronômetros
   const playSound = (type: 'rest-complete' | 'exercise-complete' | 'set-complete') => {
     // Padrões de vibração diferentes para cada tipo de alerta (em milissegundos)
     const vibrationPatterns = {
       'rest-complete': [200, 100, 200],           // Vibração média (duas pulsações)
-      'exercise-complete': [300, 100, 300, 100, 300], // Vibração longa (três pulsações)
-      'set-complete': [100]                      // Vibração curta (uma pulsação)
+      'exercise-complete': [100],                 // Vibração curta para exercício (reduzida)
+      'set-complete': [100]                       // Vibração curta (uma pulsação)
     };
     
-    // Frequências para diferentes tipos de sons (em Hz)
+    // Frequências para diferentes tipos de beeps (em Hz)
     const frequencies = {
-      'rest-complete': 880,  // Lá5
-      'exercise-complete': 659.25, // Mi5
-      'set-complete': 440   // Lá4
+      'rest-complete': 880,       // Beep para fim de descanso
+      'exercise-complete': 659.25, // Beep para fim de exercício 
+      'set-complete': 440         // Beep para fim de série
     };
     
     // Se o usuário não interagiu ainda, não tentar tocar sons
-    // mas armazenar que precisamos tocar um som quando possível
     if (!userInteracted) {
-      console.log(`Som ${type} bloqueado - usuário ainda não interagiu com a página`);
+      console.log(`Beep ${type} bloqueado - usuário ainda não interagiu com a página`);
       
       // Mostrar uma dica na primeira vez que isso ocorrer
       showToastOnce('audio-interaction-required', {
         title: "Toque na tela",
-        description: "Para ativar os sons e vibrações do app, interaja com a tela pelo menos uma vez.",
+        description: "Para ativar os beeps e vibrações do app, interaja com a tela pelo menos uma vez.",
         duration: 5000
       });
       
@@ -672,80 +648,13 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     // Tentar vibrar o dispositivo (principalmente para dispositivos móveis)
     vibrateDevice(vibrationPatterns[type]);
     
-    // Tentar reproduzir um tom usando AudioContext se disponível
+    // Reproduzir apenas beeps com AudioContext se disponível
     if (audioContext) {
-      // Duração e frequência diferentes para cada tipo
-      const duration = type === 'set-complete' ? 150 : 
-                       type === 'rest-complete' ? 300 : 500;
+      // Duração curta para todos os beeps para não interferir na música
+      const duration = 150;
       
+      // Reproduzir o beep
       playTone(frequencies[type], duration);
-    }
-    
-    try {
-      // Tentar usar o elemento de áudio pré-carregado primeiro
-      const preloadedAudio = audioElements.current[type];
-      
-      if (preloadedAudio) {
-        // Reiniciar a posição do áudio para permitir reprodução repetida
-        preloadedAudio.currentTime = 0;
-        
-        // Definir volume explicitamente
-        preloadedAudio.volume = 1.0;
-        
-        // Reproduzir o som pré-carregado
-        const playPromise = preloadedAudio.play();
-        
-        // Tratar a promise retornada por .play()
-        if (playPromise !== undefined) {
-          playPromise.catch((error) => {
-            console.error(`Erro ao reproduzir som pré-carregado ${type}:`, error);
-            // Se falhar, tentar o método anterior
-            playFallbackSound();
-          });
-        }
-      } else {
-        // Se não tiver o som pré-carregado, usar o método anterior
-        playFallbackSound();
-      }
-    } catch (error) {
-      console.error('Erro ao configurar áudio:', error);
-      playFallbackSound();
-    }
-    
-    // Função para reproduzir o som usando o método alternativo
-    function playFallbackSound() {
-      try {
-        const sound = {
-          'rest-complete': '/sounds/rest-complete.mp3',
-          'exercise-complete': '/sounds/exercise-complete.mp3',
-          'set-complete': '/sounds/set-complete.mp3'
-        };
-        
-        const audio = new Audio(sound[type]);
-        
-        // Adicionar event listeners para detectar erros e sucesso
-        audio.addEventListener('error', (e) => {
-          console.error(`Erro ao carregar som ${type}:`, e);
-        });
-        
-        // Pré-carregar o áudio
-        audio.load();
-        
-        // Definir volume explicitamente
-        audio.volume = 1.0;
-        
-        // Reproduzir o som
-        const playPromise = audio.play();
-        
-        // Tratar a promise retornada por .play()
-        if (playPromise !== undefined) {
-          playPromise.catch((error) => {
-            console.error(`Erro ao reproduzir som ${type}:`, error);
-          });
-        }
-      } catch (finalError) {
-        console.error('Erro final ao tentar tocar som:', finalError);
-      }
     }
   }
 
@@ -766,6 +675,27 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     setRestTimeLeft(restTime)
     setRestEndTime(null) // Limpar o tempo de término anterior
     setIsResting(true)
+    
+    // Limpar o valor do input de repetições para a próxima série
+    if (currentExercise.exercise_type === 'reps') {
+      // Limpar apenas o valor mostrado na interface, não o histórico salvo
+      persistInputValue(currentExercise.id, 'actual_reps', '')
+      
+      // Atualizar o estado para refletir o campo vazio
+      setExerciseHistory(prev => {
+        // Se não existe esse exercício, não fazer nada
+        if (!prev[currentExercise.id]) return prev
+        
+        // Manter o histórico, apenas limpar o campo atual
+        return {
+          ...prev,
+          [currentExercise.id]: {
+            ...prev[currentExercise.id],
+            actual_reps: ''
+          }
+        }
+      })
+    }
   }
 
   // Função auxiliar para verificar se todas as séries atingiram o número alvo de repetições
@@ -785,6 +715,26 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     // Para exercícios baseados em repetições, verificamos o alvo
     return history.reps_history.length === totalSets && 
            history.reps_history.every(reps => reps >= targetReps);
+  }
+
+  // Função para encontrar o próximo exercício não completo
+  const findNextIncompleteExerciseIndex = () => {
+    // Obter uma cópia atualizada dos exercícios completados
+    const updatedCompletedExercises = [...exercisesCompleted, currentExercise.id];
+    
+    // Começar a busca a partir do exercício atual + 1
+    for (let i = 0; i < exercises.length; i++) {
+      // Não verificar o exercício atual
+      if (i === currentExerciseIndex) continue;
+      
+      // Se encontrarmos um exercício não completo, retornar seu índice
+      if (!updatedCompletedExercises.includes(exercises[i].id)) {
+        return i;
+      }
+    }
+    
+    // Se não encontramos nenhum, retornar -1
+    return -1;
   }
 
   const handleCompleteSet = async () => {
@@ -915,9 +865,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         if (isLastExercise) {
           completeWorkout();
         } else {
-          // Passar para o próximo exercício
-          setCurrentExerciseIndex(nextExerciseIndex);
-          setCurrentSetIndex(nextSetIndex);
+          // Encontrar o próximo exercício não completado
+          const nextIncompleteExerciseIndex = findNextIncompleteExerciseIndex();
+          
+          // Passar para o próximo exercício não completado ou avançar sequencialmente
+          setCurrentExerciseIndex(nextIncompleteExerciseIndex !== -1 ? nextIncompleteExerciseIndex : nextExerciseIndex);
+          setCurrentSetIndex(0); // Sempre começar pela primeira série do próximo exercício
           
           // Tocar som de conclusão
           playSound('exercise-complete');
@@ -936,9 +889,17 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       }
       
       // 8. Atualizar estado completo para garantir persistência
+      // Se é a última série e não é o último exercício, usar o próximo exercício não completado
+      const finalExerciseIndex = isLastSet && !isLastExercise
+        ? (findNextIncompleteExerciseIndex() !== -1 ? findNextIncompleteExerciseIndex() : nextExerciseIndex)
+        : nextExerciseIndex;
+      
+      // O índice da série será sempre 0 se estivermos mudando para outro exercício  
+      const finalSetIndex = isLastSet && !isLastExercise ? 0 : nextSetIndex;
+      
       const updatedState = {
-        currentExerciseIndex: nextExerciseIndex,
-        currentSetIndex: nextSetIndex,
+        currentExerciseIndex: finalExerciseIndex,
+        currentSetIndex: finalSetIndex,
         exercisesCompleted: isLastSet 
           ? [...exercisesCompleted, exerciseId]
           : exercisesCompleted,
@@ -1403,6 +1364,27 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     // Resetar estado do botão
     setIsButtonEnabled(false);
     
+    // Limpar o campo de repetições quando mudar de série ou exercício
+    if (exerciseType === 'reps') {
+      // Limpar apenas o valor mostrado na interface
+      persistInputValue(currentExercise.id, 'actual_reps', '')
+      
+      // Atualizar o estado para refletir o campo vazio
+      setExerciseHistory(prev => {
+        // Se não existe esse exercício, não fazer nada
+        if (!prev[currentExercise.id]) return prev
+        
+        // Manter o histórico, apenas limpar o campo atual
+        return {
+          ...prev,
+          [currentExercise.id]: {
+            ...prev[currentExercise.id],
+            actual_reps: ''
+          }
+        }
+      })
+    }
+    
     // Se for exercício por tempo, apenas configurar o tempo inicial
     if (exerciseType === 'time') {
       const timeInSeconds = parseInt(currentExercise.time || '0');
@@ -1575,18 +1557,6 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   // Limpar os recursos de áudio quando o componente for desmontado
   useEffect(() => {
     return () => {
-      // Limpar os elementos de áudio
-      Object.values(audioElements.current).forEach(audio => {
-        try {
-          audio.pause();
-          audio.src = '';
-        } catch (error) {
-          console.error('Erro ao limpar elemento de áudio:', error);
-        }
-      });
-      
-      audioElements.current = {};
-      
       // Fechar o AudioContext se existir
       if (audioContext) {
         try {
