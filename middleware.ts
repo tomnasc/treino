@@ -12,9 +12,43 @@ export async function middleware(req: NextRequest) {
   // Atualizar os cookies de autenticação para cada requisição
   const { data: { session } } = await supabase.auth.getSession()
   
-  // Aumentar a vida útil do cookie se o usuário tiver uma sessão válida
+  // Se o usuário estiver autenticado
   if (session) {
-    // Remover a verificação de 'delete' para permitir que a sessão seja renovada mesmo para rotas de exclusão
+    // Verificar se o usuário está suspenso
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_suspended')
+      .eq('id', session.user.id)
+      .single()
+    
+    // Se o usuário estiver suspenso e não estiver em uma página pública ou de logout
+    if (profile?.is_suspended === true) {
+      const url = req.nextUrl.clone()
+      const path = url.pathname
+      
+      // Lista de rotas permitidas para usuários suspensos
+      const allowedRoutes = [
+        '/login', 
+        '/register', 
+        '/reset-password',
+        '/api/auth'
+      ]
+      
+      // Verificar se a rota atual é permitida
+      const isAllowedRoute = allowedRoutes.some(route => path.startsWith(route))
+      
+      // Se não for uma rota permitida, redirecionar para login com mensagem
+      if (!isAllowedRoute) {
+        // Fazer logout e redirecionar para login com parâmetro de suspensão
+        await supabase.auth.signOut()
+        
+        const redirectUrl = new URL('/login', req.url)
+        redirectUrl.searchParams.set('suspended', 'true')
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+    
+    // Aumentar a vida útil do cookie se o usuário tiver uma sessão válida
     await supabase.auth.refreshSession()
   }
   

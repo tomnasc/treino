@@ -13,7 +13,6 @@ import {
   Download, 
   Filter,
   RefreshCw,
-  Mail,
   KeyRound,
   Ban,
   AlertCircle,
@@ -21,7 +20,9 @@ import {
   Dumbbell,
   Star,
   MessageSquare,
-  ArrowRight
+  ArrowRight,
+  Mail,
+  Trash
 } from "lucide-react"
 import Link from "next/link"
 
@@ -41,7 +42,8 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
+  DropdownMenuGroup
 } from "@/app/components/ui/dropdown-menu"
 import { 
   Select, 
@@ -72,6 +74,7 @@ import {
   AccordionTrigger
 } from "@/app/components/ui/accordion"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
+import { checkRequiredEnvVars } from "@/app/utils/env-check"
 
 // Tipo para representar um usuário na tabela de administração
 type AdminUser = {
@@ -99,6 +102,7 @@ export default function AdminPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [envVarsChecked, setEnvVarsChecked] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -106,6 +110,26 @@ export default function AdminPage() {
   useEffect(() => {
     async function checkAdminAccess() {
       try {
+        // Em ambiente de desenvolvimento no cliente, pular verificação de variáveis
+        const isDev = process.env.NODE_ENV === 'development';
+        const isClient = typeof window !== 'undefined';
+        
+        // Verificar variáveis de ambiente necessárias apenas no servidor ou em produção
+        if (!isDev || !isClient) {
+          const envVarsOk = checkRequiredEnvVars();
+          setEnvVarsChecked(true);
+          
+          if (!envVarsOk && !isDev) {
+            toast({
+              title: "Configuração incompleta",
+              description: "Variáveis de ambiente necessárias não encontradas. Verifique o console para detalhes.",
+              variant: "destructive",
+            });
+          }
+        } else {
+          setEnvVarsChecked(true);
+        }
+        
         const currentUser = await getCurrentUser()
         if (!currentUser) {
           router.push("/login")
@@ -281,30 +305,78 @@ export default function AdminPage() {
     
     setIsSendingEmail(true)
     try {
-      // Em uma implementação real, aqui você integra com algum serviço de email
-      // Este é apenas um exemplo simulado
+      // Verificar se estamos em ambiente de desenvolvimento
+      const isDev = process.env.NODE_ENV === 'development';
       
-      // Simular atraso da API
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Enviar o email diretamente usando o endpoint send-email
+      const response = await fetch('/api/admin/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: selectedUser.email,
+          subject: emailSubject,
+          body: emailBody
+        }),
+        // Garantir que os cookies sejam enviados com a requisição
+        credentials: 'same-origin'
+      });
       
-      toast({
-        title: "Email enviado",
-        description: `Email enviado para ${selectedUser.email} com sucesso.`,
-      })
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+      }
       
-      // Limpar formulário
-      setEmailSubject("")
-      setEmailBody("")
-      setSelectedUser(null)
-    } catch (error) {
-      console.error("Erro ao enviar email:", error)
-      toast({
-        title: "Erro ao enviar email",
-        description: "Não foi possível enviar o email. Tente novamente.",
-        variant: "destructive",
-      })
+      const result = await response.json();
+      
+      if (isDev || result.dev) {
+        console.log('===== EMAIL SIMULADO EM AMBIENTE DE DESENVOLVIMENTO =====');
+        console.log(`Para: ${selectedUser.email}`);
+        console.log(`Assunto: ${emailSubject}`);
+        console.log(`Conteúdo: ${emailBody}`);
+        console.log('========================================================');
+        
+        toast({
+          title: "Email simulado",
+          description: `Email simulado para ${selectedUser.email} com sucesso. Verifique o console para detalhes.`,
+        });
+      } else {
+        toast({
+          title: "Email enviado",
+          description: `Email enviado para ${selectedUser.email} com sucesso.`,
+        });
+      }
+      
+      // Limpar formulário e fechar o modal
+      setEmailSubject("");
+      setEmailBody("");
+      setSelectedUser(null);
+      
+      // Fechar qualquer diálogo aberto (modal)
+      document.querySelector('[role="dialog"] button[aria-label="Close"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true })
+      );
+    } catch (error: any) {
+      console.error("Erro ao enviar email:", error);
+      
+      // Verificar se estamos em ambiente de desenvolvimento para dar um feedback mais detalhado
+      const isDev = process.env.NODE_ENV === 'development';
+      if (isDev && error.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+        toast({
+          title: "Configuração de desenvolvimento",
+          description: "Em desenvolvimento, o envio de emails é simulado. Cheque o console para detalhes.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Erro ao enviar email",
+          description: error.message || "Não foi possível enviar o email. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsSendingEmail(false)
+      setIsSendingEmail(false);
     }
   }
   
@@ -526,7 +598,7 @@ export default function AdminPage() {
                       <li>Enviar instruções personalizadas para usuários específicos</li>
                     </ul>
                     <p className="text-sm">
-                      Os emails são enviados a partir do endereço oficial do sistema e aparecerão 
+                      Os emails são enviados através do sistema nativo do Supabase e aparecerão 
                       na caixa de entrada do usuário como vindos do "Treino na Mão". 
                       Todos os emails enviados são registrados para fins de auditoria.
                     </p>

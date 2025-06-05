@@ -167,6 +167,19 @@ async function createProfileForUser(userId: string, email: string) {
 }
 
 export async function signIn(email: string, password: string) {
+  // Primeiro, verificar se o email existe e se o usuário está suspenso
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('is_suspended')
+    .eq('email', email)
+    .maybeSingle()
+
+  // Se encontrou o perfil e o usuário está suspenso
+  if (profile && profile.is_suspended) {
+    throw new Error("Sua conta está suspensa. Entre em contato com o suporte para mais informações.")
+  }
+
+  // Prosseguir com o login normal
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -174,6 +187,17 @@ export async function signIn(email: string, password: string) {
 
   if (error) {
     throw new Error(error.message)
+  }
+
+  // Após login bem-sucedido, atualizar o último login
+  if (data.user) {
+    await supabase
+      .from('profiles')
+      .update({ last_sign_in_at: new Date().toISOString() })
+      .eq('id', data.user.id)
+      .then(({ error }) => {
+        if (error) console.error('Erro ao atualizar último login:', error)
+      })
   }
 
   return data

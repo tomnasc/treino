@@ -2,15 +2,17 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
+import { AlertCircle } from "lucide-react"
 
 import { signIn } from "@/app/lib/auth"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { useToast } from "@/app/hooks/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert"
 
 interface LoginFormProps {
   onSuccess?: () => void
@@ -18,8 +20,11 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [isSuspended, setIsSuspended] = useState(false)
+  
   const {
     register,
     handleSubmit,
@@ -28,6 +33,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     email: string
     password: string
   }>()
+
+  // Verificar se o usuário foi redirecionado por estar suspenso
+  useEffect(() => {
+    const suspended = searchParams.get('suspended')
+    if (suspended === 'true') {
+      setIsSuspended(true)
+    }
+  }, [searchParams])
 
   async function onSubmit(data: { email: string; password: string }) {
     try {
@@ -56,6 +69,16 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
   return (
     <div className="grid gap-6">
+      {isSuspended && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Conta suspensa</AlertTitle>
+          <AlertDescription>
+            Sua conta foi suspensa. Entre em contato com o suporte para mais informações.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid gap-4">
           <div className="grid gap-2">
