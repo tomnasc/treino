@@ -554,3 +554,32 @@ export type TrainerRequest = Database['public']['Tables']['trainer_requests']['R
 export type FeedbackType = Database['public']['Enums']['feedback_type']
 export type FeedbackStatus = Database['public']['Enums']['feedback_status']
 export type TrainerRequestStatus = Database['public']['Enums']['trainer_request_status']
+
+export interface PhysicalProfile {
+  id: string
+  user_id: string
+  height?: number
+  weight?: number
+  birth_date?: string
+  gender?: 'masculino' | 'feminino' | 'outro' | 'prefiro_nao_informar'
+  body_fat_percentage?: number
+  muscle_mass?: number
+  chest_measurement?: number
+  waist_measurement?: number
+  hip_measurement?: number
+  arm_measurement?: number
+  thigh_measurement?: number
+  neck_measurement?: number
+  resting_heart_rate?: number
+  blood_pressure_systolic?: number
+  blood_pressure_diastolic?: number
+  activity_level?: 'sedentario' | 'leve' | 'moderado' | 'intenso' | 'muito_intenso'
+  fitness_goals?: string
+  medical_conditions?: string
+  medications?: string
+  injuries_limitations?: string
+  bmr?: number
+  notes?: string
+  created_at: string
+  updated_at: string
+}

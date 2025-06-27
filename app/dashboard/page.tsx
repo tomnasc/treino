@@ -7,6 +7,8 @@ import { ArrowRight, Activity, Dumbbell, Calendar, Award, BrainCircuit, Sparkles
 import { getCurrentUser, UserSession } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
 import { Workout } from "@/app/types/database.types"
+import { PhysicalProfileReminder } from "@/app/components/dashboard/physical-profile-reminder"
+import { PhysicalProfileStats } from "@/app/components/dashboard/physical-profile-stats"
 
 export default function DashboardPage() {
   const [user, setUser] = useState<UserSession | null>(null)
@@ -68,6 +70,9 @@ export default function DashboardPage() {
           Bem-vindo ao seu dashboard. Aqui você pode gerenciar seus treinos e acompanhar seu progresso.
         </p>
       </div>
+
+      {/* Alerta para atualização do perfil físico */}
+      {user && <PhysicalProfileReminder userId={user.id} />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Link
@@ -313,6 +318,17 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Seção de Acompanhamento */}
+      {user && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Acompanhamento</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <PhysicalProfileStats userId={user.id} />
+            {/* Outros cards de acompanhamento podem ser adicionados aqui no futuro */}
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

@@ -843,7 +843,13 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         ? (isLastExercise ? currentExerciseIndex : currentExerciseIndex + 1) 
         : currentExerciseIndex;
       
-      // 5. Salvar no banco de dados (aguardar conclusão)
+      // 5. Atualizar peso base do exercício se foi alterado
+      const currentWeight = getInputValue(exerciseId, 'actual_weight', '');
+      if (currentWeight && currentWeight.trim() !== '') {
+        await updateExerciseWeight(exerciseId, currentWeight);
+      }
+      
+      // 6. Salvar no banco de dados (aguardar conclusão)
       console.log(`Salvando dados do exercício ${exerciseId}`);
       const saveResult = await saveExerciseHistory(exerciseId);
       
@@ -1411,6 +1417,38 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       setIsButtonEnabled(false);
       
       console.log(`Cronômetro iniciado: ${timeInSeconds} segundos`);
+    }
+  };
+
+  // Função para atualizar o peso base do exercício no banco de dados
+  const updateExerciseWeight = async (exerciseId: string, newWeight: string) => {
+    if (!newWeight || newWeight.trim() === '') return;
+    
+    try {
+      const weightValue = parseFloat(newWeight);
+      if (isNaN(weightValue) || weightValue < 0) return;
+      
+      console.log(`Atualizando peso base do exercício ${exerciseId} para ${weightValue}kg`);
+      
+      const { error } = await supabase
+        .from('workout_exercises')
+        .update({ weight: weightValue.toString() })
+        .eq('id', exerciseId);
+      
+      if (error) {
+        console.error('Erro ao atualizar peso do exercício:', error);
+      } else {
+        console.log(`Peso do exercício ${exerciseId} atualizado com sucesso para ${weightValue}kg`);
+        
+        // Mostrar toast de confirmação apenas uma vez
+        showToastOnce(`weight-updated-${exerciseId}`, {
+          title: "Peso atualizado",
+          description: `Peso padrão atualizado para ${weightValue}kg. Na próxima execução deste treino, este será o peso inicial.`,
+          duration: 3000
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao processar atualização de peso:', error);
     }
   };
 
