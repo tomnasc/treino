@@ -187,7 +187,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isSupported, request, release]);
+  }, [isSupported]);
 
   // Verificar se há um estado salvo do treino - VERSÃO SIMPLIFICADA E CORRIGIDA
   useEffect(() => {
