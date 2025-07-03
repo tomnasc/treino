@@ -169,8 +169,22 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
     // Evento para reativar o WakeLock quando o documento se tornar visível novamente
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && !wakeLockEnabled && isSupported) {
-        enableWakeLock();
+      if (document.visibilityState === 'visible') {
+        // Reativar WakeLock se necessário
+        if (!wakeLockEnabled && isSupported) {
+          enableWakeLock();
+        }
+        
+        // Verificar e reativar AudioContext se necessário
+        if (audioContext && audioContext.state === 'suspended') {
+          console.log('[ÁUDIO] Página ficou visível, tentando reativar AudioContext');
+          try {
+            await audioContext.resume();
+            console.log('[ÁUDIO] AudioContext reativado após página ficar visível');
+          } catch (error) {
+            console.error('[ÁUDIO] Erro ao reativar AudioContext:', error);
+          }
+        }
       }
     };
 
@@ -187,7 +201,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isSupported]);
+  }, [isSupported, audioContext]);
 
   // Verificar se há um estado salvo do treino - VERSÃO SIMPLIFICADA E CORRIGIDA
   useEffect(() => {
@@ -497,7 +511,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           if (remaining <= 0) {
             setIsResting(false);
             setRestEndTime(null);
-            playSound('rest-complete');
+            // Executar som de forma assíncrona sem bloquear a UI
+            playSound('rest-complete').catch(err => 
+              console.error('[ÁUDIO] Erro ao reproduzir som de fim de descanso:', err)
+            );
           }
         }
       }, 1000) // Alterado de 500ms para 1000ms para contar corretamente cada segundo
@@ -527,17 +544,34 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   }, [workoutStartTime, isPaused, pausedTime]);
 
   // Função para registrar interação do usuário
-  const registerUserInteraction = useCallback(() => {
+  const registerUserInteraction = useCallback(async () => {
     if (!userInteracted) {
-      console.log("Primeira interação do usuário detectada");
+      console.log("[ÁUDIO] Primeira interação do usuário detectada");
       setUserInteracted(true);
       
       // Tentar habilitar sons após interação
       if (!audioContext) {
-        initAudioContext();
+        try {
+          const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+          setAudioContext(context);
+          console.log(`[ÁUDIO] AudioContext criado na primeira interação (estado: ${context.state})`);
+        } catch (error) {
+          console.error("[ÁUDIO] Erro ao criar AudioContext na primeira interação:", error);
+        }
       }
     }
-  }, [userInteracted]);
+    
+    // Sempre verificar se o AudioContext precisa ser reativado
+    if (audioContext && audioContext.state === 'suspended') {
+      console.log("[ÁUDIO] Detectada interação do usuário, reativando AudioContext suspenso");
+      try {
+        await audioContext.resume();
+        console.log("[ÁUDIO] AudioContext reativado com sucesso após interação");
+      } catch (error) {
+        console.error("[ÁUDIO] Erro ao reativar AudioContext após interação:", error);
+      }
+    }
+  }, [userInteracted, audioContext]);
 
   // Adicionar detector de interação do usuário
   useEffect(() => {
@@ -561,19 +595,42 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   // Inicializar AudioContext após interação
   const initAudioContext = useCallback(() => {
     try {
+      // Evitar criar múltiplos contextos
+      if (audioContext && audioContext.state !== 'closed') {
+        console.log("[ÁUDIO] AudioContext já existe, reutilizando");
+        return;
+      }
+      
       const context = new (window.AudioContext || (window as any).webkitAudioContext)();
       setAudioContext(context);
-      console.log("AudioContext inicializado com sucesso");
+      console.log(`[ÁUDIO] AudioContext inicializado com sucesso (estado: ${context.state})`);
+      
+      // Tentar ativar o contexto imediatamente se possível
+      if (context.state === 'suspended') {
+        context.resume().then(() => {
+          console.log("[ÁUDIO] AudioContext ativado imediatamente após criação");
+        }).catch(err => {
+          console.log("[ÁUDIO] AudioContext será ativado na próxima interação do usuário");
+        });
+      }
       
       // Não pré-carregamos mais arquivos de áudio, usamos apenas tons de beep
     } catch (error) {
-      console.error("Erro ao inicializar AudioContext:", error);
+      console.error("[ÁUDIO] Erro ao inicializar AudioContext:", error);
     }
-  }, []);
+  }, [audioContext]);
   
   // Função para reproduzir som usando AudioContext (mais compatível)
   const playTone = useCallback((frequency: number, duration: number) => {
-    if (!audioContext) return;
+    if (!audioContext) {
+      console.warn("[ÁUDIO] playTone chamado sem AudioContext");
+      return;
+    }
+    
+    if (audioContext.state !== 'running') {
+      console.warn(`[ÁUDIO] playTone chamado com AudioContext em estado: ${audioContext.state}`);
+      return;
+    }
     
     try {
       const oscillator = audioContext.createOscillator();
@@ -583,18 +640,31 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       oscillator.frequency.value = frequency;
       gainNode.gain.value = 0.3; // Volume reduzido para não atrapalhar música
       
+      // Configurar envelope de volume para evitar cliques
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // Fade in rápido
+      gainNode.gain.linearRampToValueAtTime(0, now + (duration / 1000) - 0.01); // Fade out
+      
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
       oscillator.start();
+      oscillator.stop(now + (duration / 1000));
       
+      // Limpar recursos após o som terminar
       setTimeout(() => {
-        oscillator.stop();
-        oscillator.disconnect();
-        gainNode.disconnect();
-      }, duration);
+        try {
+          oscillator.disconnect();
+          gainNode.disconnect();
+        } catch (disconnectError) {
+          // Ignorar erros de desconexão, pode já ter sido desconectado
+        }
+      }, duration + 100);
+      
+      console.log(`[ÁUDIO] Tom reproduzido: ${frequency}Hz por ${duration}ms`);
     } catch (error) {
-      console.error("Erro ao reproduzir tom:", error);
+      console.error("[ÁUDIO] Erro ao reproduzir tom:", error);
     }
   }, [audioContext]);
 
@@ -602,21 +672,26 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   const vibrateDevice = (pattern: number[]) => {
     // Apenas tentar vibrar se o usuário já interagiu com a página
     if (!userInteracted) {
-      console.log("Vibração bloqueada - usuário ainda não interagiu com a página");
+      console.log("[VIBRAÇÃO] Vibração bloqueada - usuário ainda não interagiu com a página");
       return;
     }
     
     try {
       if ('vibrate' in navigator) {
-        navigator.vibrate(pattern);
+        const result = navigator.vibrate(pattern);
+        console.log(`[VIBRAÇÃO] Padrão de vibração ${pattern.join(',')}ms executado: ${result}`);
+      } else {
+        console.log("[VIBRAÇÃO] API de vibração não disponível neste dispositivo");
       }
     } catch (error) {
-      console.error('Erro ao tentar vibrar dispositivo:', error);
+      console.error('[VIBRAÇÃO] Erro ao tentar vibrar dispositivo:', error);
     }
   };
 
   // Função auxiliar para tocar beeps em cronômetros
-  const playSound = (type: 'rest-complete' | 'exercise-complete' | 'set-complete') => {
+  const playSound = async (type: 'rest-complete' | 'exercise-complete' | 'set-complete') => {
+    console.log(`[ÁUDIO] Tentando reproduzir som: ${type}`);
+    
     // Padrões de vibração diferentes para cada tipo de alerta (em milissegundos)
     const vibrationPatterns = {
       'rest-complete': [200, 100, 200],           // Vibração média (duas pulsações)
@@ -633,7 +708,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     
     // Se o usuário não interagiu ainda, não tentar tocar sons
     if (!userInteracted) {
-      console.log(`Beep ${type} bloqueado - usuário ainda não interagiu com a página`);
+      console.log(`[ÁUDIO] Beep ${type} bloqueado - usuário ainda não interagiu com a página`);
       
       // Mostrar uma dica na primeira vez que isso ocorrer
       showToastOnce('audio-interaction-required', {
@@ -648,13 +723,44 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     // Tentar vibrar o dispositivo (principalmente para dispositivos móveis)
     vibrateDevice(vibrationPatterns[type]);
     
-    // Reproduzir apenas beeps com AudioContext se disponível
-    if (audioContext) {
-      // Duração curta para todos os beeps para não interferir na música
-      const duration = 150;
+    // Reproduzir beeps com AudioContext com verificações robustas
+    try {
+      // Verificar se temos um AudioContext
+      if (!audioContext) {
+        console.log(`[ÁUDIO] AudioContext não inicializado, tentando inicializar`);
+        initAudioContext();
+        // Aguardar um pouco para o contexto ser criado
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
       
-      // Reproduzir o beep
-      playTone(frequencies[type], duration);
+      if (audioContext) {
+        // Verificar o estado do AudioContext
+        console.log(`[ÁUDIO] Estado do AudioContext: ${audioContext.state}`);
+        
+        // Se estiver suspenso, tentar reativar
+        if (audioContext.state === 'suspended') {
+          console.log(`[ÁUDIO] AudioContext suspenso, tentando reativar`);
+          try {
+            await audioContext.resume();
+            console.log(`[ÁUDIO] AudioContext reativado com sucesso`);
+          } catch (resumeError) {
+            console.error(`[ÁUDIO] Erro ao reativar AudioContext:`, resumeError);
+          }
+        }
+        
+        // Se o contexto estiver funcionando, reproduzir o som
+        if (audioContext.state === 'running') {
+          const duration = 150;
+          console.log(`[ÁUDIO] Reproduzindo beep ${type} (${frequencies[type]}Hz)`);
+          playTone(frequencies[type], duration);
+        } else {
+          console.warn(`[ÁUDIO] AudioContext não está rodando (estado: ${audioContext.state})`);
+        }
+      } else {
+        console.warn(`[ÁUDIO] Falha ao criar AudioContext`);
+      }
+    } catch (error) {
+      console.error(`[ÁUDIO] Erro ao reproduzir som:`, error);
     }
   }
 
@@ -879,14 +985,18 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           setCurrentSetIndex(0); // Sempre começar pela primeira série do próximo exercício
           
           // Tocar som de conclusão
-          playSound('exercise-complete');
+          playSound('exercise-complete').catch(err => 
+            console.error('[ÁUDIO] Erro ao reproduzir som de conclusão de exercício:', err)
+          );
         }
       } else {
         // Passar para a próxima série
         setCurrentSetIndex(nextSetIndex);
         
         // Tocar som
-        playSound('set-complete');
+        playSound('set-complete').catch(err => 
+          console.error('[ÁUDIO] Erro ao reproduzir som de conclusão de série:', err)
+        );
         
         // Iniciar tempo de descanso
         if (currentExercise.rest_time && currentExercise.rest_time > 0) {
@@ -941,14 +1051,14 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }
   };
 
-  const handleSkipRest = () => {
-    registerUserInteraction(); // Registrar interação do usuário
+  const handleSkipRest = async () => {
+    await registerUserInteraction(); // Registrar interação do usuário
     setIsResting(false);
     setRestEndTime(null);
   }
 
   const handleSkipExercise = async () => {
-    registerUserInteraction(); // Registrar interação do usuário
+    await registerUserInteraction(); // Registrar interação do usuário
     // Salvar o progresso atual
     await saveExerciseHistory(currentExercise.id);
     
@@ -960,8 +1070,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }
   }
 
-  const togglePause = () => {
-    registerUserInteraction(); // Registrar interação do usuário
+  const togglePause = async () => {
+    await registerUserInteraction(); // Registrar interação do usuário
     setIsPaused(prev => {
       const newPausedState = !prev;
       
@@ -1540,7 +1650,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           if (remaining <= 0) {
             setIsExerciseTimerRunning(false);
             setIsButtonEnabled(true);
-            playSound('set-complete');
+            // Executar som de forma assíncrona sem bloquear a UI
+            playSound('set-complete').catch(err => 
+              console.error('[ÁUDIO] Erro ao reproduzir som de fim de exercício:', err)
+            );
             clearInterval(timer);
           }
         }
@@ -1692,7 +1805,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           <CardContent className="flex flex-col items-center">
             <div className="text-5xl font-bold mb-6">{formatTime(restTimeLeft)}</div>
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={togglePause}>
+              <Button variant="outline" onClick={() => togglePause()}>
                 {isPaused ? (
                   <>
                     <Play className="mr-2 h-4 w-4" />
@@ -1705,7 +1818,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                   </>
                 )}
               </Button>
-              <Button onClick={handleSkipRest}>
+              <Button onClick={() => handleSkipRest()}>
                 <ArrowRight className="mr-2 h-4 w-4" />
                 Pular Descanso
               </Button>
@@ -1724,7 +1837,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
               </div>
               {/* Mostrar botão de pausa apenas se não for exercício por tempo ou se o timer estiver rodando */}
               {(exerciseType !== 'time' || isExerciseTimerRunning) && (
-                <Button variant="outline" size="icon" onClick={togglePause}>
+                <Button variant="outline" size="icon" onClick={() => togglePause()}>
                   {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
                 </Button>
               )}
@@ -1763,8 +1876,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => {
-                              registerUserInteraction();
+                            onClick={async () => {
+                              await registerUserInteraction();
                               startExerciseTimer();
                             }}
                             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -1777,7 +1890,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={togglePause}
+                              onClick={() => togglePause()}
                             >
                               {isPaused ? (
                                 <>
@@ -1794,8 +1907,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => {
-                                registerUserInteraction();
+                              onClick={async () => {
+                                await registerUserInteraction();
                                 resetExerciseTimer();
                               }}
                             >
@@ -1934,7 +2047,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleSkipExercise}>
+                    <AlertDialogAction onClick={() => handleSkipExercise()}>
                       Pular Exercício
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -1951,8 +2064,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             </div>
             
             <Button 
-              onClick={() => {
-                registerUserInteraction();
+              onClick={async () => {
+                await registerUserInteraction();
                 handleCompleteSet();
               }} 
               className="w-full sm:w-auto mt-2 sm:mt-0"
