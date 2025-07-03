@@ -823,6 +823,144 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
            history.reps_history.every(reps => reps >= targetReps);
   }
 
+  // Função para analisar progressão e sugerir ajustes de carga
+  const analyzeProgressionAndSuggestWeightAdjustment = (exerciseId: string) => {
+    // Usar uma função que obtém o estado mais atualizado
+    const getCurrentHistory = () => {
+      // Tentar obter do estado atual primeiro
+      const currentHistory = exerciseHistory[exerciseId];
+      
+      // Se não encontrar ou se o histórico parecer incompleto, 
+      // tentar obter do localStorage como backup
+      if (!currentHistory || !currentHistory.reps_history || currentHistory.reps_history.length === 0) {
+        try {
+          const workoutState = localStorage.getItem(`workout_state_${workoutHistoryId}`);
+          if (workoutState) {
+            const parsed = JSON.parse(workoutState);
+            if (parsed.exerciseHistory && parsed.exerciseHistory[exerciseId]) {
+              return parsed.exerciseHistory[exerciseId];
+            }
+          }
+        } catch (error) {
+          console.warn('[PROGRESSÃO] Erro ao recuperar histórico do localStorage:', error);
+        }
+      }
+      
+      return currentHistory;
+    };
+
+    const history = getCurrentHistory();
+    const exercise = exercises.find(ex => ex.id === exerciseId);
+    
+    if (!history || !exercise || exercise.exercise_type !== 'reps') {
+      console.log(`[PROGRESSÃO] Pulando análise: história=${!!history}, exercício=${!!exercise}, tipo=${exercise?.exercise_type}`);
+      return; // Só analisar exercícios baseados em repetições
+    }
+
+    // Obter dados do exercício
+    const targetReps = parseInt(exercise.reps);
+    const targetWeight = parseFloat(exercise.weight || '0');
+    const actualWeight = parseFloat(history.actual_weight || '0');
+    const repsHistory = history.reps_history || [];
+    
+    // Verificar se temos dados suficientes e se todas as séries foram completadas
+    if (isNaN(targetReps) || repsHistory.length === 0 || repsHistory.length < exercise.sets) {
+      console.log(`[PROGRESSÃO] Dados insuficientes: targetReps=${targetReps}, repsHistory.length=${repsHistory.length}, exercise.sets=${exercise.sets}`);
+      return;
+    }
+
+    console.log(`[PROGRESSÃO] Analisando exercício ${exercise.exercise.name}:`, {
+      targetReps,
+      targetWeight,
+      actualWeight,
+      repsHistory,
+      totalSets: exercise.sets,
+      setsCompleted: history.sets_completed
+    });
+
+    // Verificar se o usuário usou a carga alvo (com tolerância de 5% ou mínimo 1kg)
+    const tolerance = Math.max(targetWeight * 0.05, 1.0);
+    const weightIsOnTarget = Math.abs(actualWeight - targetWeight) <= tolerance;
+    
+    // Verificar quantas séries atingiram ou superaram o alvo
+    const setsReachingTarget = repsHistory.filter((reps: number) => reps >= targetReps).length;
+    const setsWithLowReps = repsHistory.filter((reps: number) => reps <= 6).length;
+    
+    // Análise para redução de carga (prioridade alta)
+    if (setsWithLowReps > 0) {
+      const lowestReps = Math.min(...repsHistory.filter((reps: number) => reps <= 6));
+      const suggestedReduction = actualWeight >= 10 ? 2.5 : Math.max(actualWeight * 0.1, 0.5);
+      const newWeight = Math.max(actualWeight - suggestedReduction, actualWeight * 0.8);
+      
+      showToastOnce(`reduce-weight-${exerciseId}`, {
+        title: "💡 Sugestão: Reduzir Carga",
+        description: `${setsWithLowReps} série${setsWithLowReps > 1 ? 's' : ''} com ≤6 repetições (mínimo: ${lowestReps} reps). Sugestão: reduzir para ${newWeight.toFixed(1)}kg para manter boa forma e volume.`,
+        duration: 8000,
+      });
+      
+      console.log(`[PROGRESSÃO] Sugerindo redução de peso: ${setsWithLowReps} séries com ≤6 reps (mínimo: ${lowestReps})`);
+      return;
+    }
+    
+    // Análise para aumento de carga
+    if (weightIsOnTarget && setsReachingTarget === exercise.sets) {
+      // Calcular margem de repetições extras
+      const extraReps = repsHistory.map((reps: number) => Math.max(0, reps - targetReps));
+      const totalExtraReps = extraReps.reduce((sum: number, extra: number) => sum + extra, 0);
+      const avgExtraReps = totalExtraReps / exercise.sets;
+      const minReps = Math.min(...repsHistory);
+      
+      let weightIncrease = 2.5; // Aumento padrão
+      
+      // Ajustar aumento baseado na margem de repetições extras e consistência
+      if (avgExtraReps >= 3 && minReps >= targetReps + 2) {
+        weightIncrease = 5; // Aumento maior se fez consistentemente muito mais repetições
+      } else if (avgExtraReps >= 2 && minReps >= targetReps + 1) {
+        weightIncrease = 2.5; // Aumento padrão
+      } else if (minReps >= targetReps) {
+        weightIncrease = 1.25; // Aumento menor se foi no limite mas consistente
+      }
+      
+      const newWeight = actualWeight + weightIncrease;
+      
+      showToastOnce(`increase-weight-${exerciseId}`, {
+        title: "🎯 Excelente! Hora de Progredir",
+        description: `Todas as séries com ${targetReps}+ repetições usando ${actualWeight}kg! (Média: +${avgExtraReps.toFixed(1)} reps) Sugestão: aumentar para ${newWeight}kg no próximo treino.`,
+        duration: 10000,
+      });
+      
+      console.log(`[PROGRESSÃO] Sugerindo aumento de peso: ${actualWeight}kg → ${newWeight}kg (média +${avgExtraReps.toFixed(1)} reps, min: ${minReps})`);
+      return;
+    }
+    
+    // Feedback para quando a carga não estava no alvo
+    if (!weightIsOnTarget && setsReachingTarget === exercise.sets) {
+      const weightDifference = actualWeight - targetWeight;
+      
+      showToastOnce(`weight-mismatch-${exerciseId}`, {
+        title: "⚖️ Observação sobre Carga",
+        description: `Ótimo desempenho! Você usou ${actualWeight}kg (${weightDifference > 0 ? '+' : ''}${weightDifference.toFixed(1)}kg vs alvo de ${targetWeight}kg). Considere ajustar o peso base do exercício.`,
+        duration: 7000,
+      });
+      
+      console.log(`[PROGRESSÃO] Peso fora do alvo: usado ${actualWeight}kg vs alvo ${targetWeight}kg`);
+      return;
+    }
+    
+    // Casos intermediários - dar feedback sobre o progresso
+    if (setsReachingTarget > 0 && setsReachingTarget < exercise.sets) {
+      const consistencyPercentage = Math.round((setsReachingTarget / exercise.sets) * 100);
+      
+      showToastOnce(`partial-progress-${exerciseId}`, {
+        title: "👍 Progredindo",
+        description: `${consistencyPercentage}% das séries no alvo (${setsReachingTarget}/${exercise.sets}). Continue com ${actualWeight}kg e foque na consistência!`,
+        duration: 6000,
+      });
+      
+      console.log(`[PROGRESSÃO] Progresso parcial: ${setsReachingTarget}/${exercise.sets} séries no alvo (${consistencyPercentage}%)`);
+    }
+  }
+
   // Função para encontrar o próximo exercício não completo
   const findNextIncompleteExerciseIndex = () => {
     // Obter uma cópia atualizada dos exercícios completados
@@ -972,6 +1110,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           if (prev.includes(exerciseId)) return prev;
           return [...prev, exerciseId];
         });
+        
+        // Analisar progressão e sugerir ajustes de carga após pequeno delay
+        // para garantir que o estado foi atualizado
+        setTimeout(() => {
+          analyzeProgressionAndSuggestWeightAdjustment(exerciseId);
+        }, 500);
         
         // Se for o último exercício, terminar treino
         if (isLastExercise) {
