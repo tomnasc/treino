@@ -34,12 +34,13 @@ import { YAxis } from "recharts"
 import { CartesianGrid } from "recharts"
 import { Tooltip } from "recharts"
 import { Legend } from "recharts"
-import { ArrowUpRight, ArrowDownRight, Clock, Calendar, BarChart3, TrendingUp, Award, Target } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Clock, Calendar, BarChart3, TrendingUp, Award, Target, Brain, Activity, Gauge } from "lucide-react"
 import { Badge } from "@/app/components/ui/badge"
 import { Progress } from "@/app/components/ui/progress"
 import { Separator } from "@/app/components/ui/separator"
 import { Button } from "@/app/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { Workout, Exercise, MuscleGroup } from "@/app/types/database.types"
 import { supabase } from "@/app/lib/supabase"
 
@@ -57,8 +58,8 @@ interface WorkoutHistoryItem {
 interface ExerciseHistoryItem {
   id: string
   workout_history_id: string
-  workout_exercise_id: string  // Atualizado para usar workout_exercise_id
-  exercise_id?: string  // Opcional, adicionado para compatibilidade
+  workout_exercise_id: string
+  exercise_id?: string
   sets_completed: number
   max_weight: number | null
   exercise: Exercise
@@ -66,6 +67,40 @@ interface ExerciseHistoryItem {
 
 interface PerformanceAnalysisProps {
   userId: string
+}
+
+// Interfaces para análise IA
+interface WorkoutAnalysis {
+  total_workouts: number
+  total_exercises: number
+  avg_sets: number
+  avg_reps: number
+  avg_rest: number
+  muscle_groups_trained: string[]
+  days_since_last: number
+  training_frequency: number
+  workout_consistency: string
+  experience_level: string
+}
+
+interface MuscleImbalance {
+  muscle_group: string
+  exercise_frequency: number
+  imbalance_type: string
+  recommendation: string
+}
+
+interface UserProfile {
+  fitness_goals: string
+  activity_level: string
+  injuries_limitations: string
+  weight: number
+  height: number
+  age: number
+  body_fat_percentage: number
+  muscle_mass: number
+  gender: string
+  bmi: number
 }
 
 type TrendDirection = "up" | "down" | "neutral";
@@ -79,42 +114,103 @@ const startOfWeek = (date: Date, options: { locale: Locale }) => {
   return subDays(date, date.getDay())
 }
 
-// Gráfico de radar para equilibrio de grupos musculares
-const RadarChartComponent = ({ data }: { data: any[] }) => {
-  // Verificar se há dados suficientes para mostrar o gráfico
-  if (!data || data.length === 0 || data.every(item => item.value === 0)) {
+// Gráfico de radar inteligente para equilibrio muscular
+// Componente de barras horizontais para equilíbrio muscular
+const MuscleBalanceChart = ({ data }: { data: any[] }) => {
+  if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Sem dados suficientes para análise</p>
+        <div className="text-center">
+          <Activity className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-muted-foreground">Sem dados suficientes para análise</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Complete alguns treinos para ver o equilíbrio muscular
+          </p>
+        </div>
       </div>
     )
   }
 
+  // Calcular o valor máximo para normalizar as barras
+  const maxValue = Math.max(...data.map(item => item.value))
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
-        <PolarGrid />
-        <PolarAngleAxis dataKey="group" />
-        <PolarRadiusAxis />
-        <Radar
-          name="Equilíbrio"
-          dataKey="value"
-          stroke="#8884d8"
-          fill="#8884d8"
-          fillOpacity={0.6}
-        />
-      </RadarChart>
-    </ResponsiveContainer>
+    <div className="space-y-4">
+      {data.map((item, index) => {
+        const percentage = maxValue > 0 ? (item.value / maxValue) * 100 : 0
+        const isHighUsage = percentage > 70
+        const isMediumUsage = percentage > 40 && percentage <= 70
+        const isLowUsage = percentage <= 40
+
+        return (
+          <div key={index} className="space-y-2">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100 min-w-0 flex-1">
+                  {item.group}
+                </span>
+                <div className={`w-2 h-2 rounded-full ${
+                  isHighUsage ? 'bg-green-500' : 
+                  isMediumUsage ? 'bg-yellow-500' : 
+                  'bg-red-500'
+                }`} />
+              </div>
+              <span className="text-xs text-muted-foreground font-mono">
+                {item.value} exercícios
+              </span>
+            </div>
+            
+            <div className="relative">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                <div 
+                  className={`h-3 rounded-full transition-all duration-500 ${
+                    isHighUsage ? 'bg-gradient-to-r from-green-400 to-green-600' : 
+                    isMediumUsage ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' : 
+                    'bg-gradient-to-r from-red-400 to-red-600'
+                  }`}
+                  style={{ width: `${Math.max(percentage, 5)}%` }}
+                />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                  {Math.round(percentage)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+      
+      {/* Legenda */}
+      <div className="mt-6 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <p className="text-xs font-medium text-muted-foreground mb-2">Interpretação:</p>
+        <div className="grid grid-cols-1 gap-2 text-xs">
+                     <div className="flex items-center gap-2">
+             <div className="w-2 h-2 bg-green-500 rounded-full" />
+             <span>Bem treinado (&gt;70%)</span>
+           </div>
+           <div className="flex items-center gap-2">
+             <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+             <span>Moderadamente treinado (40-70%)</span>
+           </div>
+           <div className="flex items-center gap-2">
+             <div className="w-2 h-2 bg-red-500 rounded-full" />
+             <span>Pouco treinado (&lt;40%)</span>
+           </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
-// Componente que exibe as principais métricas
-const MetricCard = ({ title, value, trend, icon: Icon, description }: { 
+// Componente de métrica inteligente
+const MetricCard = ({ title, value, trend, icon: Icon, description, aiInsight }: { 
   title: string, 
   value: string | number, 
   trend?: { direction: "up" | "down" | "neutral", value: string }, 
   icon: React.ElementType,
-  description: string
+  description: string,
+  aiInsight?: string
 }) => {
   return (
     <Card>
@@ -130,10 +226,10 @@ const MetricCard = ({ title, value, trend, icon: Icon, description }: {
           {trend && (
             <Badge variant="outline" className={
               trend.direction === "up" 
-                ? "bg-green-500/10 text-green-500" 
+                ? "bg-green-500/10 text-green-500 dark:bg-green-500/20 dark:text-green-400" 
                 : trend.direction === "down" 
-                  ? "bg-destructive/10 text-destructive" 
-                  : "bg-gray-500/10 text-gray-500"
+                  ? "bg-destructive/10 text-destructive dark:bg-red-500/20 dark:text-red-400" 
+                  : "bg-gray-500/10 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400"
             }>
               {trend.direction === "up" && <ArrowUpRight className="h-3 w-3 mr-1" />}
               {trend.direction === "down" && <ArrowDownRight className="h-3 w-3 mr-1" />}
@@ -141,50 +237,40 @@ const MetricCard = ({ title, value, trend, icon: Icon, description }: {
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mb-2">
           {description}
         </p>
+        {aiInsight && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded-md mt-2">
+            <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center">
+              <Brain className="w-3 h-3 mr-1 text-blue-600 dark:text-blue-400" />
+              {aiInsight}
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-// Timeline de progresso
-const ProgressTimeline = ({ 
-  timeline, 
-  title
-}: { 
-  timeline: { date: string, event: string, achievement?: string }[], 
-  title: string 
-}) => {
+// Alerta de desequilíbrio muscular
+const MuscleImbalanceAlert = ({ imbalances }: { imbalances: MuscleImbalance[] }) => {
+  if (imbalances.length === 0) return null
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="relative ml-3">
-          {timeline.map((item, index) => (
-            <div key={index} className="mb-6 ml-6">
-              <span className="absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full bg-primary">
-                <Award className="h-3 w-3 text-background" />
-              </span>
-              <div className="flex flex-col space-y-1">
-                <time className="text-xs text-muted-foreground">
-                  {item.date}
-                </time>
-                <h3 className="text-sm font-medium">
-                  {item.event}
-                </h3>
-                {item.achievement && (
-                  <p className="text-xs text-muted-foreground">{item.achievement}</p>
-                )}
-              </div>
+    <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
+      <Activity className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+      <AlertDescription>
+        <div className="space-y-2">
+          <p className="font-medium text-orange-800 dark:text-orange-100">Desequilíbrios detectados:</p>
+          {imbalances.map((imbalance, idx) => (
+            <div key={idx} className="text-sm text-orange-700 dark:text-orange-200">
+              <strong>{imbalance.muscle_group}</strong> <span className="text-orange-600 dark:text-orange-400">({imbalance.imbalance_type})</span>: {imbalance.recommendation}
             </div>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </AlertDescription>
+    </Alert>
   )
 }
 
@@ -195,13 +281,59 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
   const [exerciseHistory, setExerciseHistory] = useState<ExerciseHistoryItem[]>([])
   const [muscleGroups, setMuscleGroups] = useState<MuscleGroup[]>([])
   
-  // Buscar dados do histórico
+  // Estados para análise IA
+  const [workoutAnalysis, setWorkoutAnalysis] = useState<WorkoutAnalysis | null>(null)
+  const [muscleImbalances, setMuscleImbalances] = useState<MuscleImbalance[]>([])
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [aiInsights, setAiInsights] = useState<string[]>([])
+  
+  // Buscar dados com análise IA
   useEffect(() => {
     async function fetchPerformanceData() {
       try {
         setIsLoading(true)
         
-        // Buscar histórico de treinos
+        // 1. ANÁLISE IA - Padrões de treino
+        const { data: analysisData, error: analysisError } = await supabase
+          .rpc('analyze_user_workout_patterns', { p_user_id: userId })
+        
+        if (analysisError) {
+          console.error('Erro na análise IA:', analysisError)
+        } else if (analysisData) {
+          setWorkoutAnalysis(analysisData)
+        }
+
+        // 2. ANÁLISE IA - Desequilíbrios musculares
+        const { data: imbalancesData, error: imbalancesError } = await supabase
+          .rpc('detect_muscle_imbalances', { p_user_id: userId })
+        
+        if (imbalancesError) {
+          console.error('Erro na detecção de desequilíbrios:', imbalancesError)
+        } else if (imbalancesData) {
+          setMuscleImbalances(imbalancesData)
+        }
+
+        // 3. PERFIL FÍSICO do usuário
+        const { data: profile, error: profileError } = await supabase
+          .from('physical_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (profileError) {
+          console.error('Erro ao buscar perfil:', profileError)
+        } else if (profile) {
+          const bmi = profile.weight / Math.pow(profile.height / 100, 2)
+          setUserProfile({
+            ...profile,
+            age: new Date().getFullYear() - new Date(profile.birth_date).getFullYear(),
+            bmi: Math.round(bmi * 10) / 10
+          })
+        }
+        
+        // 4. DADOS HISTÓRICOS (para gráficos detalhados)
         const { data: historyData, error: historyError } = await supabase
           .from("workout_history")
           .select(`
@@ -211,78 +343,137 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
           .eq("user_id", userId)
           .order("started_at", { ascending: false })
           
-        if (historyError) throw historyError
-        
-        setWorkoutHistory(historyData || [])
-        
-        // Se não tiver histórico de treinos, não precisa seguir com as demais consultas
-        if (!historyData || historyData.length === 0) {
-          setIsLoading(false)
-          return
+        if (historyError) {
+          console.error('Erro no histórico:', historyError)
+        } else {
+          setWorkoutHistory(historyData || [])
         }
         
-        // Buscar histórico de exercícios
-        const { data: exercisesData, error: exercisesError } = await supabase
-          .from("exercise_history")
-          .select(`
-            *,
-            workout_exercise_id,
-            workout_exercise:workout_exercises(
-              id,
-              exercise_id,
-              exercise:exercises(
-                id, 
-                name,
-                muscle_group_id
+        // 5. HISTÓRICO DE EXERCÍCIOS
+        if (historyData && historyData.length > 0) {
+          const { data: exercisesData, error: exercisesError } = await supabase
+            .from("exercise_history")
+            .select(`
+              *,
+              workout_exercise_id,
+              workout_exercise:workout_exercises(
+                id,
+                exercise_id,
+                exercise:exercises(
+                  id, 
+                  name,
+                  muscle_group_id
+                )
               )
-            )
-          `)
-          .in("workout_history_id", historyData.map(item => item.id))
-          
-        if (exercisesError) throw exercisesError
-        
-        // Processamento dos dados para formato compatível
-        const exercisesWithDetails = exercisesData ? exercisesData.map(item => {
-          // Verificar se workout_exercise e exercise existem e são objetos válidos
-          if (!item.workout_exercise || 
-              typeof item.workout_exercise !== 'object' ||
-              !item.workout_exercise.exercise ||
-              typeof item.workout_exercise.exercise !== 'object') {
-            return item;
+            `)
+            .in("workout_history_id", historyData.map(item => item.id))
+            
+          if (exercisesError) {
+            console.error('Erro no histórico de exercícios:', exercisesError)
+          } else {
+            const exercisesWithDetails = exercisesData ? exercisesData.map(item => {
+              if (!item.workout_exercise || 
+                  typeof item.workout_exercise !== 'object' ||
+                  !item.workout_exercise.exercise ||
+                  typeof item.workout_exercise.exercise !== 'object') {
+                return item;
+              }
+              
+              const exercise = item.workout_exercise.exercise;
+              const exercise_id = item.workout_exercise.exercise_id;
+              
+              return {
+                ...item,
+                exercise_id,
+                exercise
+              };
+            }) : [];
+            
+            setExerciseHistory(exercisesWithDetails || [])
           }
-          
-          // Extrair o exercise do workout_exercise para simplificar o acesso
-          const exercise = item.workout_exercise.exercise;
-          const exercise_id = item.workout_exercise.exercise_id;
-          
-          return {
-            ...item,
-            exercise_id,  // Adicionar exercise_id diretamente no objeto principal
-            exercise      // Adicionar exercise diretamente no objeto principal
-          };
-        }) : [];
+        }
         
-        setExerciseHistory(exercisesWithDetails || [])
-        
-        // Buscar grupos musculares
+        // 6. GRUPOS MUSCULARES
         const { data: groupsData, error: groupsError } = await supabase
           .from("muscle_groups")
           .select("*")
           
-        if (groupsError) throw groupsError
-        
-        setMuscleGroups(groupsData || [])
+        if (groupsError) {
+          console.error('Erro nos grupos musculares:', groupsError)
+        } else {
+          setMuscleGroups(groupsData || [])
+        }
+
+        // 7. GERAR INSIGHTS IA
+        const insights = generateAiInsights(analysisData, imbalancesData, profile)
+        setAiInsights(insights)
         
         setIsLoading(false)
       } catch (error) {
-        console.error("Erro ao buscar dados de desempenho:", error)
+        console.error("Erro geral ao buscar dados:", error)
         setIsLoading(false)
       }
     }
     
     fetchPerformanceData()
   }, [userId])
-  
+
+  // Gerar insights inteligentes
+  const generateAiInsights = (
+    analysis: WorkoutAnalysis | null, 
+    imbalances: MuscleImbalance[], 
+    profile: any
+  ): string[] => {
+    const insights: string[] = []
+    
+    if (!analysis) return insights
+
+    // Insight de consistência
+    if (analysis.workout_consistency === 'alta') {
+      insights.push('Excelente consistência! Mantenha esse ritmo para resultados duradouros.')
+    } else if (analysis.workout_consistency === 'média') {
+      insights.push('Boa consistência. Tente treinar com mais regularidade para melhores resultados.')
+    } else if (analysis.workout_consistency === 'baixa') {
+      insights.push('Consistência baixa. Estabeleça uma rotina mais regular de treinos.')
+    }
+
+    // Insight de experiência
+    if (analysis.experience_level === 'iniciante') {
+      insights.push('Como iniciante, foque em aprender os movimentos corretamente.')
+    } else if (analysis.experience_level === 'intermediário') {
+      insights.push('Nível intermediário. Hora de aumentar a intensidade e variedade.')
+    } else if (analysis.experience_level === 'avançado') {
+      insights.push('Nível avançado. Considere técnicas especializadas e periodização.')
+    }
+
+    // Insight de desequilíbrios
+    if (imbalances.length > 0) {
+      insights.push(`Detectados ${imbalances.length} desequilíbrios musculares que precisam de atenção.`)
+    } else {
+      insights.push('Ótimo equilíbrio muscular entre os grupos treinados!')
+    }
+
+    // Insight de frequência
+    if (analysis.training_frequency < 2) {
+      insights.push('Frequência muito baixa. Tente treinar pelo menos 3x por semana.')
+    } else if (analysis.training_frequency > 5) {
+      insights.push('Frequência muito alta. Considere descansos para melhor recuperação.')
+    }
+
+    // Insight de objetivos (se tiver perfil)
+    if (profile?.fitness_goals) {
+      const goals = profile.fitness_goals.split(',')
+      if (goals.includes('ganho_massa')) {
+        insights.push('Para ganho de massa, foque em 4-6 séries com 8-12 repetições.')
+      }
+      if (goals.includes('definicao')) {
+        insights.push('Para definição, combine treinos de força com cardio moderado.')
+      }
+    }
+
+    return insights
+  }
+
   // Filtrar dados com base no timeFrame
   const filteredWorkoutHistory = useMemo(() => {
     if (!workoutHistory.length) return []
@@ -295,75 +486,36 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
       new Date(item.started_at) >= cutoffDate
     )
   }, [workoutHistory, timeFrame])
-  
-  // Calcular consistência (% de semanas com pelo menos X treinos)
-  const consistencyMetrics = useMemo(() => {
-    if (!filteredWorkoutHistory.length) return { rate: 0, trend: "neutral" as TrendDirection, trendValue: "0%" }
+
+  // Gerar dados de equilíbrio muscular baseado na análise IA
+  const muscleBalanceData = useMemo(() => {
+    if (!workoutAnalysis || !workoutAnalysis.muscle_groups_trained.length) return []
     
-    const days = parseInt(timeFrame)
-    const totalWeeks = Math.ceil(days / 7)
+    // Usar dados da análise IA para grupos treinados
+    const trainedGroups = workoutAnalysis.muscle_groups_trained
     
-    // Agrupar treinos por semana
-    const weeklyWorkouts: Record<string, number> = {}
-    
-    filteredWorkoutHistory.forEach(item => {
-      const date = new Date(item.started_at)
-      const weekStart = startOfWeek(date, { locale: ptBR })
-      const weekKey = format(weekStart, 'yyyy-MM-dd')
+    // Criar dados para o radar baseado nos grupos detectados pela IA
+    const balanceData = trainedGroups.map(group => {
+      // Encontrar se há desequilíbrio para este grupo
+      const imbalance = muscleImbalances.find(imb => imb.muscle_group === group)
       
-      if (!weeklyWorkouts[weekKey]) {
-        weeklyWorkouts[weekKey] = 0
+      // Calcular valor baseado na frequência (se disponível) ou valor padrão
+      const value = imbalance ? imbalance.exercise_frequency * 10 : 50
+      
+      return {
+        group: group,
+        value: Math.min(value, 100) // Limitar a 100 para o gráfico
       }
-      
-      weeklyWorkouts[weekKey] += 1
     })
     
-    // Calcular semanas consistentes (com pelo menos 2 treinos)
-    const consistentWeeks = Object.values(weeklyWorkouts).filter(count => count >= 2).length
-    const consistencyRate = Math.round((consistentWeeks / totalWeeks) * 100)
-    
-    // Comparar com período anterior para tendência
-    const previousCutoffStart = subDays(new Date(), days * 2)
-    const previousCutoffEnd = subDays(new Date(), days)
-    
-    const previousWorkouts = workoutHistory.filter(item => 
-      item.completed && 
-      new Date(item.started_at) >= previousCutoffStart &&
-      new Date(item.started_at) < previousCutoffEnd
-    )
-    
-    // Calcular consistência do período anterior
-    const previousWeeklyWorkouts: Record<string, number> = {}
-    
-    previousWorkouts.forEach(item => {
-      const date = new Date(item.started_at)
-      const weekStart = startOfWeek(date, { locale: ptBR })
-      const weekKey = format(weekStart, 'yyyy-MM-dd')
-      
-      if (!previousWeeklyWorkouts[weekKey]) {
-        previousWeeklyWorkouts[weekKey] = 0
-      }
-      
-      previousWeeklyWorkouts[weekKey] += 1
-    })
-    
-    const previousConsistentWeeks = Object.values(previousWeeklyWorkouts).filter(count => count >= 2).length
-    const previousConsistencyRate = Math.round((previousConsistentWeeks / totalWeeks) * 100)
-    
-    const difference = consistencyRate - previousConsistencyRate
-    
-    return { 
-      rate: consistencyRate, 
-      trend: (difference > 0 ? "up" : difference < 0 ? "down" : "neutral") as TrendDirection,
-      trendValue: `${Math.abs(difference)}%`
-    }
-  }, [filteredWorkoutHistory, timeFrame])
-  
-  // Calcular progresso de carga nos principais exercícios
+    return balanceData
+  }, [workoutAnalysis, muscleImbalances])
+
+  // Progresso baseado na análise IA
   const strengthProgress = useMemo(() => {
     if (!exerciseHistory.length) return []
     
-    // Agrupar por exercício
+    // Usar lógica existente mas com dados da IA
     const exerciseData: Record<string, { name: string, weights: { date: string, weight: number }[] }> = {}
     
     exerciseHistory.forEach(item => {
@@ -373,7 +525,6 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
       if (!exerciseId) return
       
       const workoutDate = workoutHistory.find(w => w.id === item.workout_history_id)?.started_at
-      
       if (!workoutDate) return
       
       if (!exerciseData[exerciseId]) {
@@ -389,14 +540,11 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
       })
     })
     
-    // Ordenar por data e pegar máximo para cada mês
     const processedData = Object.values(exerciseData).map(exercise => {
-      // Ordenar por data
       const sortedWeights = exercise.weights.sort((a, b) => 
         new Date(a.date).getTime() - new Date(b.date).getTime()
       )
       
-      // Pegar apenas o primeiro e último registro para calcular progresso
       const firstWeight = sortedWeights[0]?.weight || 0
       const lastWeight = sortedWeights[sortedWeights.length - 1]?.weight || 0
       
@@ -413,176 +561,72 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
       }
     })
     
-    // Ordenar por maior progresso
     return processedData
       .filter(ex => ex.progressPercentage > 0)
       .sort((a, b) => b.progressPercentage - a.progressPercentage)
       .slice(0, 5)
   }, [exerciseHistory, workoutHistory])
-  
-  // Gerar dados de equilíbrio muscular
-  const muscleBalanceData = useMemo(() => {
-    if (!exerciseHistory.length || !muscleGroups.length) return []
-    
-    // Contar treinos por grupo muscular
-    const groupCounts: Record<string, number> = {}
-    
-    muscleGroups.forEach(group => {
-      groupCounts[group.id] = 0
-    })
-    
-    // Contar apenas exercícios válidos com grupo muscular definido
-    exerciseHistory.forEach(item => {
-      if (!item.exercise || !item.exercise.muscle_group_id) return
-      
-      const groupId = item.exercise.muscle_group_id
-      
-      if (groupCounts[groupId] !== undefined) {
-        groupCounts[groupId] += 1
-      }
-    })
-    
-    // Verificar se há dados válidos
-    const hasMuscleData = Object.values(groupCounts).some(count => count > 0)
-    if (!hasMuscleData) return []
-    
-    // Normalizar valores para o gráfico de radar (0-100)
-    const maxCount = Math.max(...Object.values(groupCounts))
-    
-    return muscleGroups.map(group => ({
-      group: group.name,
-      value: maxCount > 0 ? Math.round((groupCounts[group.id] / maxCount) * 100) : 0
-    }))
-  }, [exerciseHistory, muscleGroups])
-  
-  // Gerar linha do tempo de progresso
-  const progressTimeline = useMemo(() => {
-    if (!workoutHistory.length) return []
-    
-    const timeline: { date: string, event: string, achievement?: string }[] = []
-    
-    // Primeiro treino
-    const firstWorkout = [...workoutHistory]
-      .filter(w => w.completed)
-      .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())[0]
-    
-    if (firstWorkout) {
-      timeline.push({
-        date: format(new Date(firstWorkout.started_at), 'dd/MM/yyyy'),
-        event: "Primeiro treino registrado",
-        achievement: `${firstWorkout.workout?.name}`
-      })
-    }
-    
-    // Maior série de treinos consecutivos
-    const streaks: { start: Date, end: Date, count: number }[] = []
-    let currentStreak = { start: new Date(), end: new Date(), count: 0 }
-    
-    const sortedWorkouts = [...workoutHistory]
-      .filter(w => w.completed)
-      .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())
-    
-    sortedWorkouts.forEach((workout, index) => {
-      const currentDate = new Date(workout.started_at)
-      
-      if (index === 0) {
-        currentStreak = { start: currentDate, end: currentDate, count: 1 }
-      } else {
-        const prevDate = new Date(sortedWorkouts[index - 1].started_at)
-        const dayDiff = differenceInDays(currentDate, prevDate)
-        
-        if (dayDiff <= 3) { // Considerando treinos contínuos se até 3 dias entre eles
-          currentStreak.end = currentDate
-          currentStreak.count++
-        } else {
-          streaks.push({...currentStreak})
-          currentStreak = { start: currentDate, end: currentDate, count: 1 }
-        }
-      }
-      
-      if (index === sortedWorkouts.length - 1) {
-        streaks.push({...currentStreak})
-      }
-    })
-    
-    const longestStreak = streaks.sort((a, b) => b.count - a.count)[0]
-    
-    if (longestStreak && longestStreak.count >= 3) {
-      timeline.push({
-        date: format(longestStreak.end, 'dd/MM/yyyy'),
-        event: `Sequência de ${longestStreak.count} treinos`,
-        achievement: `De ${format(longestStreak.start, 'dd/MM')} a ${format(longestStreak.end, 'dd/MM')}`
-      })
-    }
-    
-    // Progresso de peso
-    const significantProgress = strengthProgress[0]
-    
-    if (significantProgress && significantProgress.progressPercentage >= 20) {
-      timeline.push({
-        date: significantProgress.data[significantProgress.data.length - 1].date,
-        event: `Progresso em ${significantProgress.name}`,
-        achievement: `Aumento de ${significantProgress.progressPercentage}% na carga`
-      })
-    }
-    
-    // Treino mais recente
-    const latestWorkout = sortedWorkouts[sortedWorkouts.length - 1]
-    
-    if (latestWorkout && timeline.length < 5) {
-      const isRecent = differenceInDays(new Date(), new Date(latestWorkout.started_at)) <= 7
-      
-      if (isRecent) {
-        timeline.push({
-          date: format(new Date(latestWorkout.started_at), 'dd/MM/yyyy'),
-          event: "Treino mais recente",
-          achievement: `${latestWorkout.workout?.name}`
-        })
-      }
-    }
-    
-    return timeline
-  }, [workoutHistory, strengthProgress])
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <Brain className="w-12 h-12 mx-auto mb-4 animate-pulse text-blue-500 dark:text-blue-400" />
+          <p className="text-lg font-medium text-gray-900 dark:text-gray-100">Analisando seu desempenho...</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">IA Personal Trainer processando dados</p>
+        </div>
       </div>
     )
   }
-  
-  const noDataAvailable = !workoutHistory || workoutHistory.length === 0
-  const hasValidWorkoutData = workoutHistory && workoutHistory.length > 0
-  const hasExerciseData = exerciseHistory && exerciseHistory.length > 0
+
+  const noDataAvailable = !workoutAnalysis || workoutAnalysis.total_workouts === 0
   
   if (noDataAvailable) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sem dados suficientes</CardTitle>
-          <CardDescription>
-            Você precisa completar alguns treinos para visualizar sua análise de desempenho.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button variant="outline" onClick={() => window.location.href = "/dashboard/workouts"}>
-            Ver treinos disponíveis
-          </Button>
-        </CardFooter>
-      </Card>
+      <div className="space-y-6">
+        <div className="text-center">
+          <Brain className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2 flex items-center justify-center gap-2">
+            <Brain className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+            Análise de Desempenho com IA
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            Sistema inteligente que analisa seus padrões de treino e oferece insights personalizados
+          </p>
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Sem dados suficientes para análise</CardTitle>
+            <CardDescription>
+              Complete alguns treinos para que a IA possa analisar seu desempenho e gerar insights personalizados.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button variant="outline" onClick={() => window.location.href = "/dashboard/workouts"}>
+              Começar a treinar
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     )
   }
-  
+
   return (
     <div className="space-y-6">
+      {/* Header com IA */}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Análise de desempenho</h3>
+        <div>
+          <h3 className="text-lg font-medium flex items-center gap-2">
+            <Brain className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+            Análise de Desempenho com IA
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Dados personalizados sobre seu progresso e recomendações para melhorar seus resultados
+          </p>
+        </div>
         <div className="flex items-center space-x-2">
-          <Select
-            value={timeFrame}
-            onValueChange={setTimeFrame}
-          >
+          <Select value={timeFrame} onValueChange={setTimeFrame}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Período" />
             </SelectTrigger>
@@ -595,155 +639,189 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
           </Select>
         </div>
       </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard 
+
+      {/* Alertas de desequilíbrio */}
+      <MuscleImbalanceAlert imbalances={muscleImbalances} />
+
+      {/* Métricas principais com IA */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
           title="Consistência"
-          value={`${consistencyMetrics.rate}%`}
-          trend={{ 
-            direction: consistencyMetrics.trend, 
-            value: consistencyMetrics.trendValue 
+          value={`${Math.round((workoutAnalysis?.training_frequency || 0) * 25)}%`}
+          trend={{
+            direction: workoutAnalysis?.workout_consistency === 'alta' ? 'up' : 
+                     workoutAnalysis?.workout_consistency === 'baixa' ? 'down' : 'neutral',
+            value: workoutAnalysis?.workout_consistency || 'normal'
           }}
           icon={Calendar}
           description="Semanas com pelo menos 2 treinos"
+          aiInsight={workoutAnalysis?.workout_consistency === 'alta' ? 
+            'Consistência excelente! Continue assim.' : 
+            'Melhore a regularidade para melhores resultados.'}
         />
-        <MetricCard 
+        
+        <MetricCard
           title="Treinos concluídos"
-          value={filteredWorkoutHistory.length}
+          value={workoutAnalysis?.total_workouts || 0}
           icon={BarChart3}
-          description={`No período selecionado`}
+          description="No período selecionado"
+          aiInsight={`Nível ${workoutAnalysis?.experience_level}. ${
+            workoutAnalysis?.experience_level === 'iniciante' ? 
+            'Foque na técnica correta.' : 
+            workoutAnalysis?.experience_level === 'intermediário' ? 
+            'Aumente a intensidade gradualmente.' : 
+            'Considere técnicas avançadas.'
+          }`}
         />
-        <MetricCard 
+        
+        <MetricCard
           title="Carga progressiva"
-          value={strengthProgress.length > 0 ? `+${strengthProgress[0]?.progressPercentage || 0}%` : "0%"}
+          value={strengthProgress.length > 0 ? `${strengthProgress[0].progressPercentage}%` : "0%"}
+          trend={strengthProgress.length > 0 ? {
+            direction: strengthProgress[0].progressPercentage > 0 ? 'up' : 'neutral',
+            value: strengthProgress.length > 0 ? `${strengthProgress[0].progressPercentage}%` : '0%'
+          } : undefined}
           icon={TrendingUp}
-          description={strengthProgress.length > 0 ? `Em ${strengthProgress[0]?.name}` : "Nenhum progresso registrado"}
+          description="Evolução nos principais exercícios"
+          aiInsight={strengthProgress.length > 0 ? 
+            'Progresso detectado! Continue evoluindo.' : 
+            'Registre pesos para acompanhar progressão.'}
         />
-        <MetricCard 
+        
+        <MetricCard
           title="Foco"
-          value={muscleBalanceData.find(d => d.value === 100)?.group || "N/A"}
+          value={workoutAnalysis?.muscle_groups_trained?.[0] || "Variado"}
           icon={Target}
           description="Grupo muscular mais treinado"
+          aiInsight={muscleImbalances.length > 0 ? 
+            `${muscleImbalances.length} desequilíbrios detectados` : 
+            'Bom equilíbrio muscular!'}
         />
       </div>
-      
-      <div className="grid gap-6 md:grid-cols-2">
+
+      {/* Insights da IA */}
+      {aiInsights.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Equilíbrio muscular</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+              Insights da IA Personal Trainer
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {aiInsights.map((insight, idx) => (
+                <div key={idx} className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <Brain className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">{insight}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Equilíbrio muscular com dados da IA */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-500 dark:text-green-400" />
+              Equilíbrio muscular
+            </CardTitle>
             <CardDescription>
-              Distribuição dos seus treinos por grupo muscular
+              Distribuição dos seus treinos por grupo muscular (baseado na análise IA)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {muscleBalanceData.length > 0 ? (
-              <RadarChartComponent data={muscleBalanceData} />
-            ) : (
-              <p className="text-center text-muted-foreground py-12">
-                Sem dados suficientes para análise
-              </p>
+            <MuscleBalanceChart data={muscleBalanceData} />
+            {workoutAnalysis && (
+              <div className="mt-4 space-y-3">
+                <div className="text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                    <span className="font-medium">Frequência de treino por grupo</span>
+                  </div>
+                  <p>
+                    <strong>Grupos treinados ({workoutAnalysis.muscle_groups_trained.length}):</strong> {workoutAnalysis.muscle_groups_trained.join(', ')}
+                  </p>
+                  <p>
+                    <strong>Frequência média:</strong> {workoutAnalysis.training_frequency}x por semana
+                  </p>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
-        
+
+        {/* Progresso de carga */}
         <Card>
           <CardHeader>
-            <CardTitle>Progresso de carga</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-purple-500 dark:text-purple-400" />
+              Progresso de carga
+            </CardTitle>
             <CardDescription>
               Evolução nos principais exercícios
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {strengthProgress.length > 0 ? (
-                strengthProgress.slice(0, 3).map((exercise, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between">
+            {strengthProgress.length > 0 ? (
+              <div className="space-y-4">
+                {strengthProgress.map((exercise, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">{exercise.name}</span>
-                      <span className="text-sm text-muted-foreground">+{exercise.progressPercentage}%</span>
+                      <Badge variant="outline" className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-400">
+                        +{exercise.progressPercentage}%
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{exercise.firstWeight}kg</span>
-                      <Progress value={100} className="h-2" />
-                      <span className="text-xs font-medium">{exercise.lastWeight}kg</span>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{exercise.firstWeight}kg → {exercise.lastWeight}kg</span>
                     </div>
+                    <Progress value={Math.min(exercise.progressPercentage, 100)} className="h-2" />
                   </div>
-                ))
-              ) : (
-                <p className="text-center text-muted-foreground py-12">
-                  Sem dados suficientes para análise
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Gauge className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Registre pesos nos exercícios para acompanhar seu progresso
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-      
-      <Tabs defaultValue="timeline" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="timeline">Timeline de progresso</TabsTrigger>
-          <TabsTrigger value="recommendations">Recomendações</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="timeline">
-          <ProgressTimeline 
-            timeline={progressTimeline} 
-            title="Sua jornada de fitness" 
-          />
-        </TabsContent>
-        
-        <TabsContent value="recommendations">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recomendações personalizadas</CardTitle>
-              <CardDescription>
-                Baseadas no seu histórico de treinos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {muscleBalanceData.length > 0 && (
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium">Equilibre seus treinos</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {`Você tem focado mais em ${muscleBalanceData.find(d => d.value === 100)?.group}. 
-                      Considere incluir mais exercícios para 
-                      ${muscleBalanceData.filter(d => d.value < 50).map(d => d.group).join(', ') || 'outros grupos musculares'}.`}
-                    </p>
-                  </div>
-                )}
-                
-                {consistencyMetrics.rate < 70 && (
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium">Melhore sua consistência</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Tente estabelecer uma rotina com pelo menos 2-3 treinos por semana para melhores resultados.
-                    </p>
-                  </div>
-                )}
-                
-                {strengthProgress.length > 0 && (
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium">Continue a progressão de carga</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Você tem mostrado bom progresso em {strengthProgress[0]?.name}. 
-                      Continue aumentando as cargas gradualmente para continuar evoluindo.
-                    </p>
-                  </div>
-                )}
-                
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium">Experimente novas modalidades</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Adicionar variedade ao seu programa de treino pode ajudar a manter a motivação e 
-                    trabalhar diferentes grupos musculares.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+
+      {/* Seção de Recomendações IA */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+            Recomendações Personalizadas
+          </CardTitle>
+          <CardDescription>
+            Sugestões baseadas na análise do seu desempenho
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground mb-2">
+              Acesse recomendações personalizadas
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Vá para a seção de Recomendações para ver sugestões específicas de melhorias
+            </p>
+            <Button onClick={() => window.location.href = '/dashboard/recommendations'} variant="outline">
+              Ver Recomendações
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 } 

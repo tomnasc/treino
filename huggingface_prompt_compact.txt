@@ -1,0 +1,85 @@
+PERFIL: Homem, 39anos, Iniciante, 1.3x treinos/sem, objetivo massa+definição, limitação dores nas costas.
+
+HISTÓRICO: 5 treinos, 42 exercícios, 10 grupos musculares, 3 fichas (A/B/C).
+
+DESEQUILÍBRIOS CRÍTICOS:
+- SUBTREINADOS: Tríceps (1 ex), Panturrilhas (2 ex), Isquiotibiais (2 ex)
+- SOBRETREINADOS: Pernas (8 ex), Ombros (6 ex), Costas (6 ex), Glúteos (6 ex)
+
+EXERCÍCIOS ATUAIS:
+Ficha A: Desenvolvimento halteres, Elevação lateral, Supino inclinado, Rosca direta
+Ficha B: Agachamento, Cadeira extensora, Alongamento adutores, Cadeira adutora/abdutora, Hip thrust
+Ficha C: Puxada pulley, Remada máquina, Encolhimento, Rotação ombro, Face pull
+
+PROTOCOLO: 3-4 séries, 8-15 reps, 60-90s descanso
+
+REQUISITOS NOVOS TREINOS:
+1. ADICIONAR: 3 exercícios tríceps, 2 panturrilhas, 2 isquiotibiais
+2. REDUZIR: Pernas para 4-5 ex, Ombros para 3-4 ex, Costas para 3-4 ex
+3. FREQUÊNCIA: 3-4x/semana
+4. EVITAR: Polichinhos, peso morto (dores costas)
+5. PRIORIDADE #1: Fortalecer tríceps
+
+GERE: 3 treinos balanceados (ABC) corrigindo desequilíbrios, 3 séries × 10-12 reps × 75s. 
+
+Resultado da IA:
+
+PROTOCOLO
+Séries: 3
+
+Repetições: 10–12
+
+Descanso: 75 segundos
+
+Frequência semanal: 3 a 4x
+
+Observações: Sem exercícios de impacto ou carga compressiva na coluna (evita polichinelos e peso morto).
+
+🔵 FICHA A – Peito + Tríceps + Panturrilhas
+Objetivo: Priorizar tríceps, estimular peitoral, incluir panturrilhas.
+
+Supino Inclinado com Halteres
+
+Crucifixo na máquina ou com halteres (banco reto)
+
+Tríceps Testa com barra W ou halteres
+
+Tríceps Corda no pulley
+
+Mergulho em banco (peso corporal ou com carga leve)
+
+Elevação plantar sentado (panturrilhas)
+
+Elevação plantar em pé (máquina ou com halter)
+
+🔴 FICHA B – Posterior de Coxa + Glúteos + Core
+Objetivo: Corrigir subtreino de isquiotibiais e evitar sobrecarga nas costas.
+
+Cadeira Flexora (isquiotibiais)
+
+Mesa flexora (ou stiff com halteres leves e apoio na parede, se tolerável)
+
+Glute bridge com peso (menos compressão que hip thrust)
+
+Cadeira abdutora
+
+Abdominal prancha 3x30–45s
+
+Abdominal infra no solo ou banco
+
+Elevação lateral (opcional leve, se desejar manter ombros)
+
+🟢 FICHA C – Costas + Bíceps + Ombros (leve)
+Objetivo: Reduzir volume de costas e ombros, manter estímulo.
+
+Puxada frente no pulley
+
+Remada baixa ou remada unilateral (máquina)
+
+Rosca direta (barra ou halteres)
+
+Rosca martelo (halteres ou corda)
+
+Elevação lateral (mantido com foco em leve controle)
+
+Face Pull (mantido pela função postural)

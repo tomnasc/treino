@@ -16,7 +16,8 @@ import {
   ShieldAlert,
   TrendingUp,
   MessageSquare,
-  User
+  User,
+  Target
 } from "lucide-react"
 
 import { cn } from "@/app/lib/utils"
@@ -71,6 +72,16 @@ export function DashboardNav({ user, onItemClick }: DashboardNavProps) {
       href: "/dashboard/performance",
       pattern: /^\/dashboard\/performance/,
     },
+    ...(user?.role !== "free"
+      ? [
+          {
+            label: "Recomendações",
+            icon: Target,
+            href: "/dashboard/recommendations",
+            pattern: /^\/dashboard\/recommendations/,
+          } as const,
+        ]
+      : []),
     {
       label: "Planos Premium",
       icon: Sparkles,

@@ -526,6 +526,76 @@ export interface Database {
           }
         }
       }
+      exercise_recommendations: {
+        Row: {
+          id: string
+          user_id: string
+          exercise_id: string
+          recommendation_type: 'muscle_balance' | 'goal_based' | 'progression' | 'recovery' | 'injury_prevention' | 'workout_enhancement' | 'workout_completion' | 'exercise_substitution' | 'new_workout_creation' | 'goal_optimization' | 'replace' | 'add_exercise'
+          reason: string
+          priority: number
+          target_sets: number
+          target_reps: string
+          target_rest_time: number
+          notes?: string
+          is_dismissed: boolean
+          target_workout_id?: string
+          should_replace_exercise_id?: string
+          should_create_new_workout: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          exercise_id: string
+          recommendation_type: 'muscle_balance' | 'goal_based' | 'progression' | 'recovery' | 'injury_prevention' | 'workout_enhancement' | 'workout_completion' | 'exercise_substitution' | 'new_workout_creation' | 'goal_optimization' | 'replace' | 'add_exercise'
+          reason: string
+          priority?: number
+          target_sets?: number
+          target_reps?: string
+          target_rest_time?: number
+          notes?: string
+          is_dismissed?: boolean
+          target_workout_id?: string
+          should_replace_exercise_id?: string
+          should_create_new_workout?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          exercise_id?: string
+          recommendation_type?: 'muscle_balance' | 'goal_based' | 'progression' | 'recovery' | 'injury_prevention' | 'workout_enhancement' | 'workout_completion' | 'exercise_substitution' | 'new_workout_creation' | 'goal_optimization' | 'replace' | 'add_exercise'
+          reason?: string
+          priority?: number
+          target_sets?: number
+          target_reps?: string
+          target_rest_time?: number
+          notes?: string
+          is_dismissed?: boolean
+          target_workout_id?: string
+          should_replace_exercise_id?: string
+          should_create_new_workout?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: {
+          user: {
+            foreignKeyName: "exercise_recommendations_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+          exercise: {
+            foreignKeyName: "exercise_recommendations_exercise_id_fkey"
+            columns: ["exercise_id"]
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          }
+        }
+      }
     }
     Enums: {
       user_role: "free" | "premium" | "personal" | "admin"
@@ -583,3 +653,6 @@ export interface PhysicalProfile {
   created_at: string
   updated_at: string
 }
+
+// Tipos removidos do sistema antigo de recomendações
+// O novo sistema usa interfaces locais no componente SimpleWorkoutRecommendations

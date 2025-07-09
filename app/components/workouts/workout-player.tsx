@@ -18,7 +18,6 @@ import {
   MonitorSmartphone
 } from "lucide-react"
 import Image from "next/image"
-import { useWakeLock } from "react-screen-wake-lock"
 import {
   Tooltip,
   TooltipContent,
@@ -63,9 +62,10 @@ interface WorkoutPlayerProps {
 
 export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerProps) {
   const { toast } = useToast()
-  const { isSupported, request, release } = useWakeLock()
+  // Substituir useWakeLock por implementação personalizada
+  const [wakeLockSupported, setWakeLockSupported] = useState(false)
   const [wakeLockEnabled, setWakeLockEnabled] = useState(false)
-  const wakeLockRef = useRef<any>(null)
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const [currentSetIndex, setCurrentSetIndex] = useState(0)
   const [isResting, setIsResting] = useState(false)
@@ -133,46 +133,86 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }, 5000);
   };
 
+  // NOVA implementação robusta de WakeLock usando API nativa
+  const enableWakeLock = useCallback(async () => {
+    // Verificar se a API está disponível
+    if (!('wakeLock' in navigator)) {
+      console.log('[WAKELOCK] WakeLock API não suportada neste navegador');
+      setWakeLockSupported(false);
+      
+      showToastOnce('wakelock-not-supported', {
+        title: "Informação",
+        description: "Seu dispositivo não suporta manter a tela ativa automaticamente. Considere desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
+        variant: "default",
+      });
+      return;
+    }
+
+    setWakeLockSupported(true);
+
+    try {
+      // Verificar se já existe um WakeLock ativo
+      if (wakeLockRef.current) {
+        console.log('[WAKELOCK] WakeLock já está ativo, reutilizando');
+        return;
+      }
+
+      console.log('[WAKELOCK] Tentando ativar WakeLock...');
+      const wakeLock = await navigator.wakeLock.request('screen');
+      wakeLockRef.current = wakeLock;
+      setWakeLockEnabled(true);
+      
+      console.log('[WAKELOCK] ✅ WakeLock ativado com sucesso! Tela permanecerá ativa durante o treino');
+
+      // Adicionar listener para detectar quando o WakeLock é liberado
+      wakeLock.addEventListener('release', () => {
+        console.log('[WAKELOCK] WakeLock foi liberado');
+        setWakeLockEnabled(false);
+        wakeLockRef.current = null;
+      });
+
+    } catch (err) {
+      console.error('[WAKELOCK] Erro ao ativar WakeLock:', err);
+      setWakeLockEnabled(false);
+      wakeLockRef.current = null;
+      
+      // Notificar o usuário sobre o problema
+      showToastOnce('wakelock-error', {
+        title: "Aviso",
+        description: "Não foi possível manter a tela ativa automaticamente. Você pode precisar desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
+        variant: "default",
+      });
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        console.log('[WAKELOCK] WakeLock liberado manualmente');
+      } catch (err) {
+        console.error('[WAKELOCK] Erro ao liberar WakeLock:', err);
+      } finally {
+        wakeLockRef.current = null;
+        setWakeLockEnabled(false);
+      }
+    }
+  }, []);
+
   // Efeito para ativar o WakeLock e manter a tela ativa durante o treino
   useEffect(() => {
-    const enableWakeLock = async () => {
-      if (isSupported) {
-        try {
-          const wakeLock = await request();
-          wakeLockRef.current = wakeLock;
-          setWakeLockEnabled(true);
-          console.log('WakeLock ativado: tela permanecerá ativa durante o treino');
-        } catch (err) {
-          console.error('Erro ao ativar WakeLock:', err);
-          
-          // Notificar o usuário sobre o problema
-          showToastOnce('wakelock-error', {
-            title: "Aviso",
-            description: "Não foi possível manter a tela ativa automaticamente. Você pode precisar desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
-            variant: "default",
-          });
-        }
-      } else {
-        console.log('WakeLock não é suportado neste navegador/dispositivo');
-        
-        // Notificar o usuário em dispositivos não suportados
-        showToastOnce('wakelock-not-supported', {
-          title: "Informação",
-          description: "Seu dispositivo não suporta manter a tela ativa automaticamente. Considere desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
-          variant: "default",
-        });
-      }
-    };
-
     // Ativar WakeLock quando o componente for montado
     enableWakeLock();
 
     // Evento para reativar o WakeLock quando o documento se tornar visível novamente
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        // Reativar WakeLock se necessário
-        if (!wakeLockEnabled && isSupported) {
-          enableWakeLock();
+        console.log('[WAKELOCK] Página ficou visível, verificando WakeLock...');
+        
+        // Reativar WakeLock se necessário e suportado
+        if (wakeLockSupported && !wakeLockRef.current) {
+          console.log('[WAKELOCK] Reativando WakeLock após página ficar visível');
+          await enableWakeLock();
         }
         
         // Verificar e reativar AudioContext se necessário
@@ -185,6 +225,9 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             console.error('[ÁUDIO] Erro ao reativar AudioContext:', error);
           }
         }
+      } else if (document.visibilityState === 'hidden') {
+        console.log('[WAKELOCK] Página ficou em segundo plano');
+        // Não liberar o WakeLock aqui - deixar que continue funcionando em segundo plano
       }
     };
 
@@ -192,16 +235,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
     // Cleanup: liberar o WakeLock quando o componente for desmontado
     return () => {
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release()
-          .then(() => console.log('WakeLock liberado'))
-          .catch((err: any) => console.error('Erro ao liberar WakeLock:', err));
-        wakeLockRef.current = null;
-        setWakeLockEnabled(false);
-      }
+      releaseWakeLock();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isSupported, audioContext]);
+  }, [enableWakeLock, releaseWakeLock, wakeLockSupported, audioContext]);
 
   // Verificar se há um estado salvo do treino - VERSÃO SIMPLIFICADA E CORRIGIDA
   useEffect(() => {
@@ -823,7 +860,54 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
            history.reps_history.every(reps => reps >= targetReps);
   }
 
-  // Função para analisar progressão e sugerir ajustes de carga
+  // Função para análise imediata de repetições baixas (chamada a cada série)
+  const checkForLowRepsWarning = (exerciseId: string, actualReps: number) => {
+    const exercise = exercises.find(ex => ex.id === exerciseId);
+    
+    // Só analisar exercícios baseados em repetições
+    if (!exercise || exercise.exercise_type !== 'reps') {
+      return;
+    }
+
+    const currentWeight = getInputValue(exerciseId, 'actual_weight', '');
+    const targetReps = parseInt(exercise.reps);
+
+    // Aviso imediato para repetições muito baixas (≤6)
+    if (actualReps <= 6) {
+      const suggestionWeight = currentWeight ? parseFloat(currentWeight) : parseFloat(exercise.weight || '0');
+      const suggestedReduction = suggestionWeight >= 10 ? 2.5 : Math.max(suggestionWeight * 0.1, 0.5);
+      const newWeight = Math.max(suggestionWeight - suggestedReduction, suggestionWeight * 0.8);
+      
+      showToastOnce(`low-reps-warning-${exerciseId}-${currentSetIndex}`, {
+        title: "⚠️ Poucas Repetições",
+        description: `Apenas ${actualReps} repetições nesta série. Considere reduzir para ${newWeight.toFixed(1)}kg na próxima série para conseguir mais repetições e melhor execução.`,
+        duration: 7000,
+        variant: "default",
+      });
+      
+      console.log(`[PROGRESSÃO] Aviso imediato: ${actualReps} repetições (≤6) - sugerindo redução de peso`);
+      return;
+    }
+
+    // Feedback positivo para repetições no alvo ou acima
+    if (!isNaN(targetReps)) {
+      if (actualReps >= targetReps + 3) {
+        showToastOnce(`high-reps-${exerciseId}-${currentSetIndex}`, {
+          title: "💪 Excelente!",
+          description: `${actualReps} repetições! Muito acima do alvo (${targetReps}). Considere aumentar o peso se conseguir manter essa performance.`,
+          duration: 4000,
+        });
+        console.log(`[PROGRESSÃO] Feedback positivo: ${actualReps} repetições (+${actualReps - targetReps} acima do alvo)`);
+      } else if (actualReps >= targetReps) {
+        console.log(`[PROGRESSÃO] Repetições no alvo: ${actualReps}/${targetReps}`);
+      } else if (actualReps >= targetReps * 0.7) {
+        // Repetições um pouco abaixo do alvo mas ainda aceitáveis (entre 70% e 100% do alvo)
+        console.log(`[PROGRESSÃO] Repetições ligeiramente abaixo do alvo: ${actualReps}/${targetReps} (${Math.round((actualReps/targetReps)*100)}%)`);
+      }
+    }
+  };
+
+  // Função para analisar progressão completa (chamada apenas ao final do exercício)
   const analyzeProgressionAndSuggestWeightAdjustment = (exerciseId: string) => {
     // Usar uma função que obtém o estado mais atualizado
     const getCurrentHistory = () => {
@@ -853,7 +937,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     const exercise = exercises.find(ex => ex.id === exerciseId);
     
     if (!history || !exercise || exercise.exercise_type !== 'reps') {
-      console.log(`[PROGRESSÃO] Pulando análise: história=${!!history}, exercício=${!!exercise}, tipo=${exercise?.exercise_type}`);
+      console.log(`[PROGRESSÃO] Pulando análise final: história=${!!history}, exercício=${!!exercise}, tipo=${exercise?.exercise_type}`);
       return; // Só analisar exercícios baseados em repetições
     }
 
@@ -865,11 +949,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     
     // Verificar se temos dados suficientes e se todas as séries foram completadas
     if (isNaN(targetReps) || repsHistory.length === 0 || repsHistory.length < exercise.sets) {
-      console.log(`[PROGRESSÃO] Dados insuficientes: targetReps=${targetReps}, repsHistory.length=${repsHistory.length}, exercise.sets=${exercise.sets}`);
+      console.log(`[PROGRESSÃO] Dados insuficientes para análise final: targetReps=${targetReps}, repsHistory.length=${repsHistory.length}, exercise.sets=${exercise.sets}`);
       return;
     }
 
-    console.log(`[PROGRESSÃO] Analisando exercício ${exercise.exercise.name}:`, {
+    console.log(`[PROGRESSÃO] Análise final do exercício ${exercise.exercise.name}:`, {
       targetReps,
       targetWeight,
       actualWeight,
@@ -886,24 +970,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     const setsReachingTarget = repsHistory.filter((reps: number) => reps >= targetReps).length;
     const setsWithLowReps = repsHistory.filter((reps: number) => reps <= 6).length;
     
-    // Análise para redução de carga (prioridade alta)
-    if (setsWithLowReps > 0) {
-      const lowestReps = Math.min(...repsHistory.filter((reps: number) => reps <= 6));
-      const suggestedReduction = actualWeight >= 10 ? 2.5 : Math.max(actualWeight * 0.1, 0.5);
-      const newWeight = Math.max(actualWeight - suggestedReduction, actualWeight * 0.8);
-      
-      showToastOnce(`reduce-weight-${exerciseId}`, {
-        title: "💡 Sugestão: Reduzir Carga",
-        description: `${setsWithLowReps} série${setsWithLowReps > 1 ? 's' : ''} com ≤6 repetições (mínimo: ${lowestReps} reps). Sugestão: reduzir para ${newWeight.toFixed(1)}kg para manter boa forma e volume.`,
-        duration: 8000,
-      });
-      
-      console.log(`[PROGRESSÃO] Sugerindo redução de peso: ${setsWithLowReps} séries com ≤6 reps (mínimo: ${lowestReps})`);
-      return;
-    }
+    // ⚠️ IMPORTANTE: Não mostrar aviso de redução aqui pois já foi mostrado nas séries individuais
+    // Focar apenas em feedback de progressão positiva
     
-    // Análise para aumento de carga
-    if (weightIsOnTarget && setsReachingTarget === exercise.sets) {
+    // Análise para aumento de carga (só se não houve séries com poucas repetições)
+    if (setsWithLowReps === 0 && weightIsOnTarget && setsReachingTarget === exercise.sets) {
       // Calcular margem de repetições extras
       const extraReps = repsHistory.map((reps: number) => Math.max(0, reps - targetReps));
       const totalExtraReps = extraReps.reduce((sum: number, extra: number) => sum + extra, 0);
@@ -933,8 +1004,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       return;
     }
     
-    // Feedback para quando a carga não estava no alvo
-    if (!weightIsOnTarget && setsReachingTarget === exercise.sets) {
+    // Feedback para quando a carga não estava no alvo mas performance foi boa
+    if (!weightIsOnTarget && setsReachingTarget === exercise.sets && setsWithLowReps === 0) {
       const weightDifference = actualWeight - targetWeight;
       
       showToastOnce(`weight-mismatch-${exerciseId}`, {
@@ -947,8 +1018,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       return;
     }
     
-    // Casos intermediários - dar feedback sobre o progresso
-    if (setsReachingTarget > 0 && setsReachingTarget < exercise.sets) {
+    // Casos intermediários - dar feedback sobre o progresso (apenas se não houve séries muito baixas)
+    if (setsWithLowReps === 0 && setsReachingTarget > 0 && setsReachingTarget < exercise.sets) {
       const consistencyPercentage = Math.round((setsReachingTarget / exercise.sets) * 100);
       
       showToastOnce(`partial-progress-${exerciseId}`, {
@@ -959,6 +1030,9 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] Progresso parcial: ${setsReachingTarget}/${exercise.sets} séries no alvo (${consistencyPercentage}%)`);
     }
+
+    // Resumo final apenas para log
+    console.log(`[PROGRESSÃO] Resumo final - Séries com baixas reps: ${setsWithLowReps}, Séries no alvo: ${setsReachingTarget}/${exercise.sets}`);
   }
 
   // Função para encontrar o próximo exercício não completo
@@ -1024,13 +1098,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           return;
         }
         
-        // Dica sobre repetições apenas para exercícios baseados em repetições
-        if (!isNaN(targetReps) && actualReps < targetReps * 0.5) {
-          showToastOnce('reps-tip', {
-            title: "Dica de treino",
-            description: "Considere reduzir o peso na próxima série para conseguir mais repetições.",
-          });
-        }
+        // Análise imediata das repetições para este exercício
+        checkForLowRepsWarning(currentExercise.id, actualReps);
       } else {
         // Para exercícios baseados em tempo, usar o tempo do exercício como as repetições
         // (já que o usuário não informa isso manualmente)
@@ -1261,9 +1330,8 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`Salvando histórico para exercício ${exerciseId}:`, {
         sets_completed: history.sets_completed,
-        reps: history.actual_reps,
-        weight: history.actual_weight,
-        reps_history: history.reps_history
+        reps_history: history.reps_history,
+        actual_weight: history.actual_weight
       });
       
       // 1. Sempre salvar dados locais primeiro para evitar perda em caso de erro de rede
@@ -1303,83 +1371,74 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         console.error("Erro ao salvar dados localmente:", localError);
       }
       
-      // 2. Preparar dados para o banco
-      const historyData = {
-        sets_completed: history.sets_completed,
-        actual_reps: history.actual_reps,
-        actual_weight: history.actual_weight || null,
-        notes: history.notes || null,
-        reps_history_json: history.reps_history || []
-      };
-      
-      // 3. Verificar se já existe um registro
-      const { data: existingData, error: checkError } = await supabase
-        .from("exercise_history")
-        .select("id")
-        .eq("workout_history_id", workoutHistoryId)
-        .eq("workout_exercise_id", exerciseId)
-        .limit(1)
-        .maybeSingle(); // Usando maybeSingle em vez de single para evitar erro quando não encontra
-        
-      if (checkError) {
-        console.error(`Erro ao verificar histórico existente: ${checkError.message}`);
-      }
-      
-      // 4. Salvar no banco (com retry automático)
-      let retryCount = 0;
-      const maxRetries = 3;
-      let saveSuccess = false;
-      
-      while (!saveSuccess && retryCount < maxRetries) {
-        try {
-          let result;
+      // 2. LÓGICA CORRIGIDA: Deletar registros existentes e recriar para garantir consistência
+      try {
+        // Primeiro, deletar todos os registros existentes para este exercício
+        const { error: deleteError } = await supabase
+          .from("exercise_history")
+          .delete()
+          .eq("workout_history_id", workoutHistoryId)
+          .eq("workout_exercise_id", exerciseId);
           
-          if (existingData?.id) {
-            // Atualizar registro existente
-            console.log(`Atualizando registro existente ID ${existingData.id}`);
-            result = await supabase
-              .from("exercise_history")
-              .update(historyData)
-              .eq("id", existingData.id)
-              .select(); // Adicionando select() para evitar erro 406
-          } else {
-            // Criar novo registro
-            console.log("Criando novo registro de histórico");
-            result = await supabase
-              .from("exercise_history")
-              .insert({
-                workout_history_id: workoutHistoryId,
-                workout_exercise_id: exerciseId,
-                ...historyData
-              })
-              .select(); // Adicionando select() para evitar erro 406
-          }
-          
-          if (result.error) {
-            throw result.error;
-          }
-          
-          saveSuccess = true;
-          console.log("Dados salvos com sucesso no banco de dados!");
-        } catch (dbError) {
-          retryCount++;
-          console.error(`Erro ao salvar no banco de dados (tentativa ${retryCount}/${maxRetries}):`, dbError);
-          
-          if (retryCount >= maxRetries) {
-            // Só mostrar erro ao usuário na última tentativa
-            showToastOnce('db-save-error', {
-              title: "Falha ao salvar no servidor",
-              description: "Seus dados foram salvos localmente e serão sincronizados mais tarde.",
-              variant: "default"
-            });
-          } else {
-            // Esperar antes de tentar novamente
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
+        if (deleteError) {
+          console.error("Erro ao deletar registros existentes:", deleteError);
+          throw deleteError;
         }
+        
+        // 3. Criar registros corretos - UM POR SÉRIE EXECUTADA
+        const totalSetsCompleted = history.sets_completed;
+        const repsHistory = history.reps_history || [];
+        const recordsToInsert = [];
+        
+        for (let setNumber = 1; setNumber <= totalSetsCompleted; setNumber++) {
+          // Obter repetições para esta série específica
+          const repsForThisSet = repsHistory[setNumber - 1] || 0;
+          
+          // Cada registro representa UMA série
+          const setRecord = {
+            workout_history_id: workoutHistoryId,
+            workout_exercise_id: exerciseId,
+            set_number: setNumber,
+            sets_completed: 1, // CORRETO: Cada registro representa 1 série
+            actual_reps: repsForThisSet.toString(),
+            actual_weight: history.actual_weight || null, // Por enquanto, usar o mesmo peso para todas as séries
+            notes: setNumber === 1 ? (history.notes || null) : null, // Notas apenas no primeiro registro
+            reps_history_json: [repsForThisSet] // CORRETO: Array com apenas a repetição desta série
+          };
+          
+          recordsToInsert.push(setRecord);
+        }
+        
+        // 4. Inserir todos os registros de uma vez
+        if (recordsToInsert.length > 0) {
+          const { error: insertError } = await supabase
+            .from("exercise_history")
+            .insert(recordsToInsert);
+            
+          if (insertError) {
+            console.error("Erro ao inserir novos registros:", insertError);
+            throw insertError;
+          }
+          
+          console.log(`✅ Sucesso! ${recordsToInsert.length} séries do exercício ${exerciseId} salvas corretamente!`);
+          console.log("Registros salvos:", recordsToInsert.map(r => `Série ${r.set_number}: ${r.actual_reps} reps`));
+        }
+        
+        return true;
+        
+      } catch (dbError) {
+        console.error("Erro ao salvar no banco de dados:", dbError);
+        
+        // Mostrar erro ao usuário
+        showToastOnce('db-save-error', {
+          title: "Falha ao salvar no servidor",
+          description: "Seus dados foram salvos localmente e serão sincronizados mais tarde.",
+          variant: "default"
+        });
+        
+        return false;
       }
       
-      return saveSuccess;
     } catch (error) {
       console.error("Erro geral ao salvar histórico:", error);
       return false;
@@ -1496,16 +1555,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       setIsFinishing(true)
       
       // Liberar o WakeLock ao finalizar o treino
-      if (wakeLockRef.current) {
-        try {
-          await wakeLockRef.current.release();
-          wakeLockRef.current = null;
-          setWakeLockEnabled(false);
-          console.log('WakeLock liberado ao finalizar treino');
-        } catch (err) {
-          console.error('Erro ao liberar WakeLock:', err);
-        }
-      }
+      await releaseWakeLock();
       
       // Marcar o treino como concluído
       const { error } = await supabase
@@ -1912,7 +1962,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">{workout.name}</h2>
         <div className="flex items-center text-sm text-muted-foreground">
-          {isSupported && wakeLockEnabled && (
+          {wakeLockSupported && wakeLockEnabled && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
