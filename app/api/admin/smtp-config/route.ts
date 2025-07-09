@@ -5,7 +5,6 @@ import { Database } from '@/app/types/database.types'
 
 // Garantir que esta rota não seja armazenada em cache
 export const dynamic = 'force-dynamic'
-export const runtime = 'edge'
 
 // GET para obter as configurações SMTP atuais (apenas para administradores)
 export async function GET(request: NextRequest) {

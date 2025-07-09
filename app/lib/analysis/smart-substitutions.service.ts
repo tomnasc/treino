@@ -516,10 +516,10 @@ export class SmartSubstitutionsService {
     const uniqueMap = new Map<string, SmartSubstitution>()
 
     substitutions.forEach(sub => {
-      const key = `${sub.originalExerciseId}_${sub.suggestedExerciseId}`
+      const key = `${sub.original.id}_${sub.substitute.id}`
       const existing = uniqueMap.get(key)
 
-      if (!existing || sub.priority > existing.priority) {
+      if (!existing || sub.effectiveness > existing.effectiveness) {
         uniqueMap.set(key, sub)
       }
     })
@@ -530,7 +530,7 @@ export class SmartSubstitutionsService {
         if (a.basedOnRealData !== b.basedOnRealData) {
           return a.basedOnRealData ? -1 : 1
         }
-        return b.priority - a.priority
+        return b.effectiveness - a.effectiveness
       })
       .slice(0, 15) // Máximo 15 substituições
   }
@@ -946,8 +946,8 @@ export class SmartSubstitutionsService {
       }
       
       // Secundário: por efetividade
-      if (a.effectivenessScore !== b.effectivenessScore) {
-        return b.effectivenessScore - a.effectivenessScore
+      if (a.effectiveness !== b.effectiveness) {
+        return b.effectiveness - a.effectiveness
       }
       
       // Terciário: por confiança
