@@ -862,15 +862,20 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
   // Função para análise imediata de repetições baixas (chamada a cada série)
   const checkForLowRepsWarning = (exerciseId: string, actualReps: number) => {
+    console.log(`[PROGRESSÃO] Verificando repetições: ${actualReps} para exercício ${exerciseId}, série ${currentSetIndex + 1}`);
+    
     const exercise = exercises.find(ex => ex.id === exerciseId);
     
     // Só analisar exercícios baseados em repetições
     if (!exercise || exercise.exercise_type !== 'reps') {
+      console.log(`[PROGRESSÃO] Pulando análise - exercício não é baseado em repetições`);
       return;
     }
 
     const currentWeight = getInputValue(exerciseId, 'actual_weight', '');
     const targetReps = parseInt(exercise.reps);
+
+    console.log(`[PROGRESSÃO] Dados para análise: actualReps=${actualReps}, targetReps=${targetReps}, currentWeight=${currentWeight}`);
 
     // Aviso imediato para repetições muito baixas (≤6)
     if (actualReps <= 6) {
@@ -878,50 +883,63 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       const suggestedReduction = suggestionWeight >= 10 ? 2.5 : Math.max(suggestionWeight * 0.1, 0.5);
       const newWeight = Math.max(suggestionWeight - suggestedReduction, suggestionWeight * 0.8);
       
-      showToastOnce(`low-reps-warning-${exerciseId}-${currentSetIndex}`, {
+      // Usar chave única para cada série para garantir que o alerta apareça sempre
+      const alertKey = `low-reps-warning-${exerciseId}-set-${currentSetIndex}-${Date.now()}`;
+      
+      console.log(`[PROGRESSÃO] 🚨 MOSTRANDO ALERTA: ${actualReps} repetições ≤ 6 - sugerindo redução de ${suggestionWeight}kg para ${newWeight.toFixed(1)}kg`);
+      
+      toast({
         title: "⚠️ Poucas Repetições",
         description: `Apenas ${actualReps} repetições nesta série. Considere reduzir para ${newWeight.toFixed(1)}kg na próxima série para conseguir mais repetições e melhor execução.`,
-        duration: 7000,
-        variant: "default",
+        duration: 8000,
       });
       
-      console.log(`[PROGRESSÃO] Aviso imediato: ${actualReps} repetições (≤6) - sugerindo redução de peso`);
       return;
     }
 
     // Feedback positivo para repetições no alvo ou acima
     if (!isNaN(targetReps)) {
       if (actualReps >= targetReps + 3) {
-        showToastOnce(`high-reps-${exerciseId}-${currentSetIndex}`, {
+        console.log(`[PROGRESSÃO] 💪 Excelente performance: ${actualReps} repetições (+${actualReps - targetReps} acima do alvo)`);
+        
+        toast({
           title: "💪 Excelente!",
           description: `${actualReps} repetições! Muito acima do alvo (${targetReps}). Considere aumentar o peso se conseguir manter essa performance.`,
           duration: 4000,
         });
-        console.log(`[PROGRESSÃO] Feedback positivo: ${actualReps} repetições (+${actualReps - targetReps} acima do alvo)`);
       } else if (actualReps >= targetReps) {
-        console.log(`[PROGRESSÃO] Repetições no alvo: ${actualReps}/${targetReps}`);
+        console.log(`[PROGRESSÃO] ✅ Repetições no alvo: ${actualReps}/${targetReps}`);
       } else if (actualReps >= targetReps * 0.7) {
         // Repetições um pouco abaixo do alvo mas ainda aceitáveis (entre 70% e 100% do alvo)
-        console.log(`[PROGRESSÃO] Repetições ligeiramente abaixo do alvo: ${actualReps}/${targetReps} (${Math.round((actualReps/targetReps)*100)}%)`);
+        const percentage = Math.round((actualReps/targetReps)*100);
+        console.log(`[PROGRESSÃO] ⚠️ Repetições ligeiramente abaixo do alvo: ${actualReps}/${targetReps} (${percentage}%)`);
+      } else {
+        console.log(`[PROGRESSÃO] ❌ Repetições bem abaixo do alvo: ${actualReps}/${targetReps} (${Math.round((actualReps/targetReps)*100)}%)`);
       }
     }
   };
 
   // Função para analisar progressão completa (chamada apenas ao final do exercício)
   const analyzeProgressionAndSuggestWeightAdjustment = (exerciseId: string) => {
+    console.log(`[PROGRESSÃO] 🔍 Iniciando análise final para exercício ${exerciseId}`);
+    
     // Usar uma função que obtém o estado mais atualizado
     const getCurrentHistory = () => {
       // Tentar obter do estado atual primeiro
       const currentHistory = exerciseHistory[exerciseId];
       
+      console.log(`[PROGRESSÃO] Estado atual do exercício:`, currentHistory);
+      
       // Se não encontrar ou se o histórico parecer incompleto, 
       // tentar obter do localStorage como backup
       if (!currentHistory || !currentHistory.reps_history || currentHistory.reps_history.length === 0) {
+        console.log(`[PROGRESSÃO] Estado atual incompleto, tentando localStorage...`);
         try {
           const workoutState = localStorage.getItem(`workout_state_${workoutHistoryId}`);
           if (workoutState) {
             const parsed = JSON.parse(workoutState);
             if (parsed.exerciseHistory && parsed.exerciseHistory[exerciseId]) {
+              console.log(`[PROGRESSÃO] Dados recuperados do localStorage:`, parsed.exerciseHistory[exerciseId]);
               return parsed.exerciseHistory[exerciseId];
             }
           }
@@ -936,8 +954,13 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     const history = getCurrentHistory();
     const exercise = exercises.find(ex => ex.id === exerciseId);
     
-    if (!history || !exercise || exercise.exercise_type !== 'reps') {
-      console.log(`[PROGRESSÃO] Pulando análise final: história=${!!history}, exercício=${!!exercise}, tipo=${exercise?.exercise_type}`);
+    if (!history || !exercise) {
+      console.log(`[PROGRESSÃO] ❌ Dados básicos ausentes: história=${!!history}, exercício=${!!exercise}`);
+      return;
+    }
+
+    if (exercise.exercise_type !== 'reps') {
+      console.log(`[PROGRESSÃO] ⏰ Pulando análise - exercício baseado em tempo (${exercise.exercise_type})`);
       return; // Só analisar exercícios baseados em repetições
     }
 
@@ -947,20 +970,22 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     const actualWeight = parseFloat(history.actual_weight || '0');
     const repsHistory = history.reps_history || [];
     
-    // Verificar se temos dados suficientes e se todas as séries foram completadas
-    if (isNaN(targetReps) || repsHistory.length === 0 || repsHistory.length < exercise.sets) {
-      console.log(`[PROGRESSÃO] Dados insuficientes para análise final: targetReps=${targetReps}, repsHistory.length=${repsHistory.length}, exercise.sets=${exercise.sets}`);
-      return;
-    }
-
-    console.log(`[PROGRESSÃO] Análise final do exercício ${exercise.exercise.name}:`, {
+    console.log(`[PROGRESSÃO] 📊 Dados para análise final:`, {
+      exerciseName: exercise.exercise.name,
       targetReps,
       targetWeight,
       actualWeight,
       repsHistory,
       totalSets: exercise.sets,
-      setsCompleted: history.sets_completed
+      setsCompleted: history.sets_completed,
+      repsHistoryLength: repsHistory.length
     });
+    
+    // Verificar se temos dados suficientes e se todas as séries foram completadas
+    if (isNaN(targetReps) || repsHistory.length === 0 || repsHistory.length < exercise.sets) {
+      console.log(`[PROGRESSÃO] ❌ Dados insuficientes: targetReps=${targetReps}, repsHistory.length=${repsHistory.length}, exercise.sets=${exercise.sets}`);
+      return;
+    }
 
     // Verificar se o usuário usou a carga alvo (com tolerância de 5% ou mínimo 1kg)
     const tolerance = Math.max(targetWeight * 0.05, 1.0);
@@ -973,6 +998,14 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     // ⚠️ IMPORTANTE: Não mostrar aviso de redução aqui pois já foi mostrado nas séries individuais
     // Focar apenas em feedback de progressão positiva
     
+    console.log(`[PROGRESSÃO] 🎯 Verificando critérios para aumento de peso:`, {
+      setsWithLowReps,
+      weightIsOnTarget,
+      setsReachingTarget,
+      exerciseSets: exercise.sets,
+      shouldSuggestIncrease: setsWithLowReps === 0 && weightIsOnTarget && setsReachingTarget === exercise.sets
+    });
+
     // Análise para aumento de carga (só se não houve séries com poucas repetições)
     if (setsWithLowReps === 0 && weightIsOnTarget && setsReachingTarget === exercise.sets) {
       // Calcular margem de repetições extras
@@ -994,13 +1027,15 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       const newWeight = actualWeight + weightIncrease;
       
-      showToastOnce(`increase-weight-${exerciseId}`, {
+      console.log(`[PROGRESSÃO] 🚀 EXIBINDO ALERTA DE AUMENTO: ${actualWeight}kg → ${newWeight}kg (média +${avgExtraReps.toFixed(1)} reps, min: ${minReps})`);
+      
+      // Usar toast direto para garantir que aparece
+      toast({
         title: "🎯 Excelente! Hora de Progredir",
         description: `Todas as séries com ${targetReps}+ repetições usando ${actualWeight}kg! (Média: +${avgExtraReps.toFixed(1)} reps) Sugestão: aumentar para ${newWeight}kg no próximo treino.`,
-        duration: 10000,
+        duration: 12000,
       });
       
-      console.log(`[PROGRESSÃO] Sugerindo aumento de peso: ${actualWeight}kg → ${newWeight}kg (média +${avgExtraReps.toFixed(1)} reps, min: ${minReps})`);
       return;
     }
     
@@ -1008,13 +1043,14 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     if (!weightIsOnTarget && setsReachingTarget === exercise.sets && setsWithLowReps === 0) {
       const weightDifference = actualWeight - targetWeight;
       
-      showToastOnce(`weight-mismatch-${exerciseId}`, {
+      console.log(`[PROGRESSÃO] ⚖️ Peso fora do alvo mas boa performance: usado ${actualWeight}kg vs alvo ${targetWeight}kg`);
+      
+      toast({
         title: "⚖️ Observação sobre Carga",
         description: `Ótimo desempenho! Você usou ${actualWeight}kg (${weightDifference > 0 ? '+' : ''}${weightDifference.toFixed(1)}kg vs alvo de ${targetWeight}kg). Considere ajustar o peso base do exercício.`,
-        duration: 7000,
+        duration: 8000,
       });
       
-      console.log(`[PROGRESSÃO] Peso fora do alvo: usado ${actualWeight}kg vs alvo ${targetWeight}kg`);
       return;
     }
     
@@ -1022,17 +1058,17 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     if (setsWithLowReps === 0 && setsReachingTarget > 0 && setsReachingTarget < exercise.sets) {
       const consistencyPercentage = Math.round((setsReachingTarget / exercise.sets) * 100);
       
-      showToastOnce(`partial-progress-${exerciseId}`, {
+      console.log(`[PROGRESSÃO] 👍 Progresso parcial: ${setsReachingTarget}/${exercise.sets} séries no alvo (${consistencyPercentage}%)`);
+      
+      toast({
         title: "👍 Progredindo",
         description: `${consistencyPercentage}% das séries no alvo (${setsReachingTarget}/${exercise.sets}). Continue com ${actualWeight}kg e foque na consistência!`,
         duration: 6000,
       });
-      
-      console.log(`[PROGRESSÃO] Progresso parcial: ${setsReachingTarget}/${exercise.sets} séries no alvo (${consistencyPercentage}%)`);
     }
 
     // Resumo final apenas para log
-    console.log(`[PROGRESSÃO] Resumo final - Séries com baixas reps: ${setsWithLowReps}, Séries no alvo: ${setsReachingTarget}/${exercise.sets}`);
+    console.log(`[PROGRESSÃO] 📋 Resumo final - Séries com baixas reps: ${setsWithLowReps}, Séries no alvo: ${setsReachingTarget}/${exercise.sets}`);
   }
 
   // Função para encontrar o próximo exercício não completo
@@ -1180,11 +1216,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           return [...prev, exerciseId];
         });
         
-        // Analisar progressão e sugerir ajustes de carga após pequeno delay
-        // para garantir que o estado foi atualizado
+        // Analisar progressão e sugerir ajustes de carga após atualizar o estado
+        // Usar um delay maior e capturar o estado atualizado na hora da execução
         setTimeout(() => {
+          console.log(`[PROGRESSÃO] Iniciando análise final do exercício ${exerciseId} após conclusão`);
           analyzeProgressionAndSuggestWeightAdjustment(exerciseId);
-        }, 500);
+        }, 1000);
         
         // Se for o último exercício, terminar treino
         if (isLastExercise) {
