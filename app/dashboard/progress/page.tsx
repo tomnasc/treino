@@ -6,6 +6,7 @@ import { BarChart, LineChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Separator } from "@/app/components/ui/separator"
+import { Badge } from "@/app/components/ui/badge"
 import { useToast } from "@/app/hooks/use-toast"
 import { getCurrentUser } from "@/app/lib/auth"
 import { supabase } from "@/app/lib/supabase"
@@ -547,7 +548,78 @@ export default function ProgressPage() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Lista de Exercícios</CardTitle>
+              <CardTitle>Evolução Inteligente de Carga</CardTitle>
+              <CardDescription>
+                Progressões e ajustes de peso baseados na performance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {exerciseStats.length > 0 ? exerciseStats.map(stat => {
+                  // Calcular evolução baseada nos dados disponíveis
+                  const evolutionPercentage = stat.max_weight > 0 && stat.average_weight > 0 
+                    ? Math.round(((stat.max_weight - stat.average_weight) / stat.average_weight) * 100)
+                    : 0;
+                  
+                  const isEvolution = Math.abs(evolutionPercentage) >= 5;
+                  const isPositive = evolutionPercentage > 0;
+                  
+                  return (
+                    <div key={stat.exercise_id} className="flex items-center justify-between pb-4 border-b">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{stat.exercise_name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {stat.workout_count} treinos, {stat.set_count} séries realizadas
+                        </p>
+                        {isEvolution && (
+                          <div className="mt-1 flex items-center gap-2">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                isPositive 
+                                  ? "text-green-600 dark:text-green-400 border-green-600 dark:border-green-400" 
+                                  : "text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-400"
+                              }`}
+                            >
+                              {isPositive ? '+' : ''}{evolutionPercentage}%
+                            </Badge>
+                            <span className={`text-xs ${isPositive ? 'text-green-600' : 'text-orange-600'}`}>
+                              {isPositive ? 'Progressão detectada' : 'Ajuste inteligente'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="font-semibold">{stat.average_weight} kg atual</span>
+                        <span className="text-sm text-muted-foreground">
+                          {stat.max_weight} kg máximo atingido
+                        </span>
+                        {!isEvolution && (
+                          <span className="text-xs text-blue-600 dark:text-blue-400">
+                            Carga estável
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="text-center py-8">
+                    <div className="text-muted-foreground mb-2">📊</div>
+                    <p className="text-muted-foreground">
+                      Execute treinos com pesos registrados para acompanhar evolução
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Resumo por Exercício</CardTitle>
+              <CardDescription>
+                Estatísticas detalhadas de performance
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">

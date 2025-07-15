@@ -61,7 +61,7 @@ interface ExerciseHistoryItem {
   workout_exercise_id: string
   exercise_id?: string
   sets_completed: number
-  max_weight: number | null
+  actual_weight: string | null
   exercise: Exercise
 }
 
@@ -519,7 +519,12 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
     const exerciseData: Record<string, { name: string, weights: { date: string, weight: number }[] }> = {}
     
     exerciseHistory.forEach(item => {
-      if (!item.exercise || !item.max_weight) return
+      // Verificar se tem exercício e peso válido
+      if (!item.exercise || !item.actual_weight) return
+      
+      // Converter peso de string para número (lidar com vírgulas decimais)
+      const weight = parseFloat(item.actual_weight.replace(',', '.'))
+      if (isNaN(weight) || weight <= 0) return
       
       const exerciseId = item.exercise_id
       if (!exerciseId) return
@@ -536,7 +541,7 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
       
       exerciseData[exerciseId].weights.push({ 
         date: format(new Date(workoutDate), 'dd/MM/yyyy'),
-        weight: item.max_weight
+        weight: weight
       })
     })
     
@@ -545,8 +550,21 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
         new Date(a.date).getTime() - new Date(b.date).getTime()
       )
       
-      const firstWeight = sortedWeights[0]?.weight || 0
-      const lastWeight = sortedWeights[sortedWeights.length - 1]?.weight || 0
+      // Agrupar por data e pegar o peso máximo de cada data
+      const dateGrouped = sortedWeights.reduce((acc, curr) => {
+        if (!acc[curr.date] || acc[curr.date] < curr.weight) {
+          acc[curr.date] = curr.weight
+        }
+        return acc
+      }, {} as Record<string, number>)
+      
+      const maxWeightsByDate = Object.entries(dateGrouped).map(([date, weight]) => ({
+        date,
+        weight
+      })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      
+      const firstWeight = maxWeightsByDate[0]?.weight || 0
+      const lastWeight = maxWeightsByDate[maxWeightsByDate.length - 1]?.weight || 0
       
       const progressPercentage = firstWeight > 0 
         ? Math.round(((lastWeight - firstWeight) / firstWeight) * 100) 
@@ -557,14 +575,14 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
         firstWeight,
         lastWeight,
         progressPercentage,
-        data: sortedWeights
+        data: maxWeightsByDate
       }
     })
     
     return processedData
-      .filter(ex => ex.progressPercentage > 0)
-      .sort((a, b) => b.progressPercentage - a.progressPercentage)
-      .slice(0, 5)
+      .filter(ex => ex.progressPercentage !== 0 && ex.data.length > 1) // Inclui tanto progressões quanto regressões
+      .sort((a, b) => Math.abs(b.progressPercentage) - Math.abs(a.progressPercentage)) // Ordena por magnitude de mudança
+      .slice(0, 8) // Mostra mais exercícios para incluir variações
   }, [exerciseHistory, workoutHistory])
 
   if (isLoading) {
@@ -675,17 +693,22 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
         />
         
         <MetricCard
-          title="Carga progressiva"
-          value={strengthProgress.length > 0 ? `${strengthProgress[0].progressPercentage}%` : "0%"}
+          title="Evolução de carga"
+          value={strengthProgress.length > 0 ? 
+            `${strengthProgress[0].progressPercentage > 0 ? '+' : ''}${strengthProgress[0].progressPercentage}%` : 
+            "0%"}
           trend={strengthProgress.length > 0 ? {
-            direction: strengthProgress[0].progressPercentage > 0 ? 'up' : 'neutral',
-            value: strengthProgress.length > 0 ? `${strengthProgress[0].progressPercentage}%` : '0%'
+            direction: strengthProgress[0].progressPercentage > 0 ? 'up' : 
+                      strengthProgress[0].progressPercentage < 0 ? 'down' : 'neutral',
+            value: strengthProgress.length > 0 ? `${Math.abs(strengthProgress[0].progressPercentage)}%` : '0%'
           } : undefined}
           icon={TrendingUp}
-          description="Evolução nos principais exercícios"
+          description="Mudanças inteligentes de peso"
           aiInsight={strengthProgress.length > 0 ? 
-            'Progresso detectado! Continue evoluindo.' : 
-            'Registre pesos para acompanhar progressão.'}
+            (strengthProgress[0].progressPercentage > 0 ? 
+              'Progresso detectado! Continue evoluindo.' : 
+              'Ajuste inteligente de carga detectado.') : 
+            'Registre pesos para acompanhar evolução.'}
         />
         
         <MetricCard
@@ -755,40 +778,73 @@ export function PerformanceAnalysis({ userId }: PerformanceAnalysisProps) {
           </CardContent>
         </Card>
 
-        {/* Progresso de carga */}
+        {/* Evolução de carga */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-purple-500 dark:text-purple-400" />
-              Progresso de carga
+              Evolução de carga
             </CardTitle>
             <CardDescription>
-              Evolução nos principais exercícios
+              Mudanças nos principais exercícios (progressões e ajustes)
             </CardDescription>
           </CardHeader>
           <CardContent>
             {strengthProgress.length > 0 ? (
               <div className="space-y-4">
-                {strengthProgress.map((exercise, idx) => (
-                  <div key={idx} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">{exercise.name}</span>
-                      <Badge variant="outline" className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-400">
-                        +{exercise.progressPercentage}%
-                      </Badge>
+                {strengthProgress.map((exercise, idx) => {
+                  const isPositive = exercise.progressPercentage > 0;
+                  const isSignificantChange = Math.abs(exercise.progressPercentage) >= 5;
+                  
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">{exercise.name}</span>
+                        <Badge 
+                          variant="outline" 
+                          className={`${
+                            isPositive 
+                              ? "text-green-600 dark:text-green-400 border-green-600 dark:border-green-400" 
+                              : "text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-400"
+                          }`}
+                        >
+                          {isPositive ? '+' : ''}{exercise.progressPercentage}%
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{exercise.firstWeight}kg → {exercise.lastWeight}kg</span>
+                        <span className={`${isPositive ? 'text-green-600' : 'text-orange-600'} font-medium`}>
+                          {isPositive ? 'Progressão' : 'Ajuste'}
+                          {isSignificantChange && (
+                            <span className="ml-1">
+                              {Math.abs(exercise.progressPercentage) >= 15 ? '🔥' : 
+                               Math.abs(exercise.progressPercentage) >= 10 ? '⚡' : '📈'}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <Progress 
+                          value={Math.min(Math.abs(exercise.progressPercentage), 100)} 
+                          className={`h-2 ${isPositive ? '' : 'opacity-75'}`}
+                        />
+                        {!isPositive && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-xs text-orange-600 dark:text-orange-400 font-medium bg-background px-1 rounded">
+                              Redução inteligente
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{exercise.firstWeight}kg → {exercise.lastWeight}kg</span>
-                    </div>
-                    <Progress value={Math.min(exercise.progressPercentage, 100)} className="h-2" />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
                 <Gauge className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  Registre pesos nos exercícios para acompanhar seu progresso
+                  Registre pesos nos exercícios para acompanhar sua evolução
                 </p>
               </div>
             )}

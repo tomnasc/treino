@@ -364,11 +364,11 @@ export class ProgressMetricsService {
   }
   
   /**
-   * Calcular taxa de progressão
+   * Calcular taxa de evolução inteligente (considera tanto progressão quanto regressão apropriada)
    */
   private static async calculateProgressionRate(userId: string, workouts: Workout[]): Promise<number> {
     try {
-      // Buscar histórico de execuções
+      // Buscar histórico de execuções com mais contexto
       const { data: history, error } = await supabase
         .from('exercise_history')
         .select(`
@@ -376,6 +376,9 @@ export class ProgressMetricsService {
           workout_history!inner (
             user_id,
             workout_date
+          ),
+          workout_exercise!inner (
+            exercise:exercises(name, muscle_group)
           )
         `)
         .eq('workout_history.user_id', userId)
@@ -384,8 +387,8 @@ export class ProgressMetricsService {
       
       if (error || !history || history.length < 2) return 0
       
-      // Calcular progressão média baseada em peso/repetições
-      const progressions: number[] = []
+      // Calcular evolução inteligente por exercício
+      const evolutionScores: number[] = []
       
       // Agrupar por exercício
       const exerciseGroups = history.reduce((groups: Record<string, any[]>, record) => {
@@ -396,32 +399,123 @@ export class ProgressMetricsService {
       }, {})
       
       Object.values(exerciseGroups).forEach(records => {
-        if (records.length < 2) return
+        if (records.length < 3) return // Precisamos de pelo menos 3 pontos para análise
         
         records.sort((a, b) => new Date(a.workout_history.workout_date).getTime() - 
                               new Date(b.workout_history.workout_date).getTime())
         
-        const first = records[0]
-        const last = records[records.length - 1]
-        
-        // Calcular progressão (simplificado)
-        const firstTotal = (first.actual_weight || 0) * (first.actual_reps || 0)
-        const lastTotal = (last.actual_weight || 0) * (last.actual_reps || 0)
-        
-        if (firstTotal > 0) {
-          const progression = ((lastTotal - firstTotal) / firstTotal) * 100
-          progressions.push(progression)
+        // Analisar evolução ao longo do tempo
+        const evolutionScore = this.calculateExerciseEvolution(records)
+        if (evolutionScore !== null) {
+          evolutionScores.push(evolutionScore)
         }
       })
       
-      if (progressions.length === 0) return 0
+      if (evolutionScores.length === 0) return 0
       
-      const avgProgression = progressions.reduce((sum, p) => sum + p, 0) / progressions.length
-      return Math.round(Math.max(-100, Math.min(100, avgProgression)))
+      // Calcular score médio ponderado
+      const avgEvolution = evolutionScores.reduce((sum, score) => sum + score, 0) / evolutionScores.length
+      return Math.round(Math.max(-100, Math.min(100, avgEvolution)))
       
     } catch (error) {
-      console.error('Erro ao calcular taxa de progressão:', error)
+      console.error('Erro ao calcular taxa de evolução:', error)
       return 0
+    }
+  }
+
+  /**
+   * Calcular score de evolução para um exercício específico
+   */
+  private static calculateExerciseEvolution(records: any[]): number | null {
+    if (records.length < 3) return null
+    
+    // Dividir histórico em segmentos para análise de tendência
+    const segments = Math.min(3, Math.floor(records.length / 2))
+    const segmentSize = Math.floor(records.length / segments)
+    
+    let totalEvolutionScore = 0
+    let validSegments = 0
+    
+    for (let i = 0; i < segments - 1; i++) {
+      const startIdx = i * segmentSize
+      const endIdx = (i + 1) * segmentSize
+      const nextEndIdx = Math.min((i + 2) * segmentSize, records.length)
+      
+      const currentSegment = records.slice(startIdx, endIdx)
+      const nextSegment = records.slice(endIdx, nextEndIdx)
+      
+      if (currentSegment.length === 0 || nextSegment.length === 0) continue
+      
+      // Calcular métricas médias de cada segmento
+      const currentMetrics = this.calculateSegmentMetrics(currentSegment)
+      const nextMetrics = this.calculateSegmentMetrics(nextSegment)
+      
+      if (currentMetrics.weightLoad > 0 && nextMetrics.weightLoad > 0) {
+        // Calcular mudança percentual
+        const weightChange = ((nextMetrics.weightLoad - currentMetrics.weightLoad) / currentMetrics.weightLoad) * 100
+        const completionChange = nextMetrics.completionRate - currentMetrics.completionRate
+        
+        // Score de evolução baseado em múltiplos fatores
+        let segmentScore = 0
+        
+        // 1. Evolução de carga
+        if (weightChange > 5) {
+          segmentScore += Math.min(30, weightChange * 3) // Bonificação por aumento significativo
+        } else if (weightChange < -5) {
+          // Redução pode ser positiva se acompanhada de melhora na execução
+          if (completionChange > 10) {
+            segmentScore += 15 // Redução inteligente com melhora na execução
+          } else {
+            segmentScore += Math.max(-15, weightChange) // Penalização menor por redução
+          }
+        } else {
+          segmentScore += 5 // Estabilidade também é positiva
+        }
+        
+        // 2. Evolução na taxa de conclusão
+        segmentScore += completionChange * 0.5
+        
+        // 3. Evolução no volume (peso x repetições)
+        const volumeChange = ((nextMetrics.averageVolume - currentMetrics.averageVolume) / currentMetrics.averageVolume) * 100
+        segmentScore += Math.min(20, Math.max(-20, volumeChange * 0.3))
+        
+        totalEvolutionScore += segmentScore
+        validSegments++
+      }
+    }
+    
+    return validSegments > 0 ? totalEvolutionScore / validSegments : 0
+  }
+
+  /**
+   * Calcular métricas de um segmento de registros
+   */
+  private static calculateSegmentMetrics(records: any[]) {
+    let totalWeight = 0
+    let totalReps = 0
+    let totalSets = 0
+    let completedSets = 0
+    
+    records.forEach(record => {
+      const weight = parseFloat(record.actual_weight || '0')
+      const reps = parseInt(record.actual_reps || '0')
+      const sets = parseInt(record.sets_completed || '0')
+      
+      totalWeight += weight
+      totalReps += reps
+      totalSets += sets
+      if (sets > 0) completedSets += sets
+    })
+    
+    const avgWeight = totalWeight / records.length
+    const avgReps = totalReps / records.length
+    const completionRate = totalSets > 0 ? (completedSets / totalSets) * 100 : 0
+    
+    return {
+      weightLoad: avgWeight,
+      averageReps: avgReps,
+      averageVolume: avgWeight * avgReps,
+      completionRate: completionRate
     }
   }
   
