@@ -1446,9 +1446,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             actual_reps: repsForThisSet.toString(),
             actual_weight: history.actual_weight || null,
             notes: setNumber === 1 ? (history.notes || null) : null, // Notas apenas no primeiro registro
-            reps_history_json: [repsForThisSet],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            reps_history_json: [repsForThisSet]
           };
           
           // UPSERT individual para cada série
