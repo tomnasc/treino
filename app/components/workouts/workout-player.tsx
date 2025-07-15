@@ -1317,7 +1317,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   };
 
   const saveExerciseHistory = async (exerciseId: string) => {
-    if (!workoutHistoryId) return;
+    if (!workoutHistoryId) {
+      console.warn("Sem workout_history_id disponível, pulando salvamento");
+      return false;
+    }
     
     try {
       setIsSaving(true);
@@ -1325,7 +1328,13 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       const history = exerciseHistory[exerciseId];
       if (!history) {
         console.error(`Tentativa de salvar histórico para exercício inexistente: ${exerciseId}`);
-        return;
+        return false;
+      }
+      
+      // Validar dados básicos
+      if (!exerciseId || typeof exerciseId !== 'string') {
+        console.error("ID do exercício inválido:", exerciseId);
+        return false;
       }
       
       console.log(`Salvando histórico para exercício ${exerciseId}:`, {
@@ -1371,57 +1380,81 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         console.error("Erro ao salvar dados localmente:", localError);
       }
       
-      // 2. LÓGICA CORRIGIDA: Deletar registros existentes e recriar para garantir consistência
+      // 2. LÓGICA ROBUSTA: Usar UPSERT para evitar conflitos de constraint
       try {
-        // Primeiro, deletar todos os registros existentes para este exercício
-        const { error: deleteError } = await supabase
-          .from("exercise_history")
-          .delete()
-          .eq("workout_history_id", workoutHistoryId)
-          .eq("workout_exercise_id", exerciseId);
-          
-        if (deleteError) {
-          console.error("Erro ao deletar registros existentes:", deleteError);
-          throw deleteError;
-        }
-        
-        // 3. Criar registros corretos - UM POR SÉRIE EXECUTADA
         const totalSetsCompleted = history.sets_completed;
         const repsHistory = history.reps_history || [];
-        const recordsToInsert = [];
+        
+        // Verificar se há séries para salvar
+        if (totalSetsCompleted <= 0) {
+          console.log(`Nenhuma série completada para o exercício ${exerciseId}, pulando salvamento`);
+          return true;
+        }
+        
+        console.log(`Salvando exercício ${exerciseId}: ${totalSetsCompleted} séries completas, repetições: [${repsHistory.join(', ')}]`);
+        
+        // 3. Processar cada série individualmente com UPSERT
+        const upsertPromises = [];
         
         for (let setNumber = 1; setNumber <= totalSetsCompleted; setNumber++) {
           // Obter repetições para esta série específica
           const repsForThisSet = repsHistory[setNumber - 1] || 0;
           
-          // Cada registro representa UMA série
+          // Dados da série atual
           const setRecord = {
             workout_history_id: workoutHistoryId,
             workout_exercise_id: exerciseId,
             set_number: setNumber,
-            sets_completed: 1, // CORRETO: Cada registro representa 1 série
+            sets_completed: 1, // Cada registro representa 1 série
             actual_reps: repsForThisSet.toString(),
-            actual_weight: history.actual_weight || null, // Por enquanto, usar o mesmo peso para todas as séries
+            actual_weight: history.actual_weight || null,
             notes: setNumber === 1 ? (history.notes || null) : null, // Notas apenas no primeiro registro
-            reps_history_json: [repsForThisSet] // CORRETO: Array com apenas a repetição desta série
+            reps_history_json: [repsForThisSet],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           };
           
-          recordsToInsert.push(setRecord);
+          // UPSERT individual para cada série
+          const upsertPromise = supabase
+            .from("exercise_history")
+            .upsert(setRecord, {
+              onConflict: 'workout_history_id,workout_exercise_id,set_number',
+              ignoreDuplicates: false
+            })
+            .select();
+            
+          upsertPromises.push(upsertPromise);
         }
         
-        // 4. Inserir todos os registros de uma vez
-        if (recordsToInsert.length > 0) {
-          const { error: insertError } = await supabase
-            .from("exercise_history")
-            .insert(recordsToInsert);
-            
-          if (insertError) {
-            console.error("Erro ao inserir novos registros:", insertError);
-            throw insertError;
-          }
+        // 4. Executar todos os upserts
+        const results = await Promise.allSettled(upsertPromises);
+        
+        // 5. Verificar resultados
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (let i = 0; i < results.length; i++) {
+          const result = results[i];
+          const setNumber = i + 1;
           
-          console.log(`✅ Sucesso! ${recordsToInsert.length} séries do exercício ${exerciseId} salvas corretamente!`);
-          console.log("Registros salvos:", recordsToInsert.map(r => `Série ${r.set_number}: ${r.actual_reps} reps`));
+          if (result.status === 'fulfilled' && !result.value.error) {
+            successCount++;
+            console.log(`✅ Série ${setNumber} salva: ${repsHistory[i]} reps`);
+          } else {
+            errorCount++;
+            const error = result.status === 'rejected' ? result.reason : result.value.error;
+            console.error(`❌ Erro ao salvar série ${setNumber}:`, error);
+          }
+        }
+        
+        if (errorCount > 0) {
+          console.warn(`Salvamento parcial: ${successCount} sucessos, ${errorCount} erros`);
+          // Não lançar erro se pelo menos algumas séries foram salvas
+          if (successCount === 0) {
+            throw new Error(`Falha ao salvar todas as ${totalSetsCompleted} séries`);
+          }
+        } else {
+          console.log(`✅ Sucesso! Todas as ${successCount} séries do exercício ${exerciseId} salvas corretamente!`);
         }
         
         return true;
