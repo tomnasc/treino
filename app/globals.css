@@ -98,3 +98,42 @@
     min-width: 100px;
   }
 } 
+
+/* Estilos específicos para PWA móvel */
+@media (display-mode: standalone) {
+  /* Garantir que toasts sejam visíveis em PWA */
+  [data-radix-toast-viewport] {
+    z-index: 99999 !important;
+    position: fixed !important;
+    pointer-events: none;
+  }
+  
+  [data-radix-toast-viewport] > * {
+    pointer-events: auto;
+  }
+  
+  /* Melhorar visibilidade em dispositivos móveis */
+  [data-radix-toast-root] {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+
+/* Estilos para dispositivos móveis em geral */
+@media (max-width: 640px) {
+  [data-radix-toast-viewport] {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    padding: 16px !important;
+    max-width: 100% !important;
+  }
+  
+  [data-radix-toast-root] {
+    margin-bottom: 8px !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+} 

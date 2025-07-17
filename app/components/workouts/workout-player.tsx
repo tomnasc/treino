@@ -133,6 +133,109 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }, 5000);
   };
 
+  // Função melhorada para mostrar toast que funciona bem em PWA móvel
+  const showToastPWA = (toastConfig: any, forceShow: boolean = false) => {
+    // Função para garantir que o toast seja mostrado
+    const displayToast = () => {
+      const pwaMode = isPWA() ? '[PWA]' : '[WEB]';
+      console.log(`[TOAST] ${pwaMode} Exibindo toast:`, toastConfig.title);
+      toast({
+        ...toastConfig,
+        duration: toastConfig.duration || 8000, // Duração padrão maior para PWA
+      });
+      
+      // Em PWA, forçar visibilidade e adicionar vibração
+      if (isPWA()) {
+        setTimeout(() => {
+          const toastContainer = document.querySelector('[data-radix-toast-viewport]');
+          if (toastContainer) {
+            (toastContainer as HTMLElement).style.zIndex = '99999';
+            console.log('[TOAST] [PWA] Z-index forçado para toast container');
+          }
+        }, 100);
+        
+        // Adicionar vibração específica para toasts importantes em PWA
+        if (forceShow && toastConfig.title && (
+          toastConfig.title.includes('Progredir') || 
+          toastConfig.title.includes('Repetições') ||
+          toastConfig.title.includes('Ajuste')
+        )) {
+          vibrateDevice([100, 50, 100]); // Vibração dupla para toasts importantes
+        }
+      }
+    };
+
+    // Se forceShow estiver true, mostrar imediatamente
+    if (forceShow) {
+      displayToast();
+      return;
+    }
+
+    // Verificar se o documento está visível
+    if (document.visibilityState === 'hidden') {
+      console.log('[TOAST] Documento oculto, aguardando ficar visível para mostrar toast');
+      
+      // Aguardar o documento ficar visível para mostrar o toast
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          console.log('[TOAST] Documento ficou visível, exibindo toast');
+          displayToast();
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Timeout de segurança - mostrar mesmo se a página não ficar visível
+      setTimeout(() => {
+        displayToast();
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }, 3000);
+    } else {
+      // Documento está visível, mostrar imediatamente
+      displayToast();
+    }
+  };
+
+  // Função para detectar se estamos em PWA
+  const isPWA = () => {
+    return window.matchMedia('(display-mode: standalone)').matches || 
+           (window.navigator as any).standalone === true ||
+           document.referrer.includes('android-app://');
+  };
+
+  // Adicionar listener para garantir que toasts sejam visíveis em PWA
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isPWA()) {
+        console.log('[TOAST] PWA ficou em foco, verificando toasts pendentes');
+        // Forçar re-render dos toasts quando PWA volta ao foco
+        const toastContainer = document.querySelector('[data-radix-toast-viewport]');
+        if (toastContainer) {
+          console.log('[TOAST] Container de toast encontrado, garantindo visibilidade');
+          (toastContainer as HTMLElement).style.zIndex = '99999';
+          (toastContainer as HTMLElement).style.position = 'fixed';
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isPWA()) {
+        console.log('[TOAST] PWA ficou visível, verificando toasts');
+        // Aguardar um pouco para o PWA estabilizar antes de verificar toasts
+        setTimeout(handleFocus, 500);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   // NOVA implementação robusta de WakeLock usando API nativa
   const enableWakeLock = useCallback(async () => {
     // Verificar se a API está disponível
@@ -140,7 +243,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       console.log('[WAKELOCK] WakeLock API não suportada neste navegador');
       setWakeLockSupported(false);
       
-      showToastOnce('wakelock-not-supported', {
+      showToastPWA({
         title: "Informação",
         description: "Seu dispositivo não suporta manter a tela ativa automaticamente. Considere desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
         variant: "default",
@@ -177,7 +280,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       wakeLockRef.current = null;
       
       // Notificar o usuário sobre o problema
-      showToastOnce('wakelock-error', {
+      showToastPWA({
         title: "Aviso",
         description: "Não foi possível manter a tela ativa automaticamente. Você pode precisar desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
         variant: "default",
@@ -888,11 +991,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] 🚨 MOSTRANDO ALERTA: ${actualReps} repetições ≤ 6 - sugerindo redução de ${suggestionWeight}kg para ${newWeight.toFixed(1)}kg`);
       
-      toast({
+      showToastPWA({
         title: "⚠️ Poucas Repetições",
         description: `Apenas ${actualReps} repetições nesta série. Considere reduzir para ${newWeight.toFixed(1)}kg na próxima série para conseguir mais repetições e melhor execução.`,
-        duration: 8000,
-      });
+        duration: 10000,
+      }, true); // forceShow = true para avisos importantes
       
       return;
     }
@@ -902,11 +1005,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       if (actualReps >= targetReps + 3) {
         console.log(`[PROGRESSÃO] 💪 Excelente performance: ${actualReps} repetições (+${actualReps - targetReps} acima do alvo)`);
         
-        toast({
+        showToastPWA({
           title: "💪 Excelente!",
           description: `${actualReps} repetições! Muito acima do alvo (${targetReps}). Considere aumentar o peso se conseguir manter essa performance.`,
-          duration: 4000,
-        });
+          duration: 5000,
+        }, true);
       } else if (actualReps >= targetReps) {
         console.log(`[PROGRESSÃO] ✅ Repetições no alvo: ${actualReps}/${targetReps}`);
       } else if (actualReps >= targetReps * 0.7) {
@@ -1018,11 +1121,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] ⬇️ SUGERINDO REDUÇÃO: ${actualWeight}kg → ${newWeight.toFixed(1)}kg (${reductionReason})`);
       
-      toast({
+      showToastPWA({
         title: "🎯 Ajuste Inteligente de Carga",
         description: `Baseado na performance, considere reduzir para ${newWeight.toFixed(1)}kg no próximo treino. Motivo: ${reductionReason}. Priorize técnica perfeita!`,
-        duration: 12000,
-      });
+        duration: 15000,
+      }, true); // forceShow = true para sugestões importantes
       
       return;
     }
@@ -1047,11 +1150,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] 🚀 SUGERINDO AUMENTO: ${actualWeight}kg → ${newWeight}kg (média +${avgExtraReps.toFixed(1)} reps)`);
       
-      toast({
+      showToastPWA({
         title: "🎯 Excelente! Hora de Progredir",
         description: `Todas as séries com ${targetReps}+ repetições usando ${actualWeight}kg! Considere aumentar para ${newWeight}kg no próximo treino.`,
-        duration: 12000,
-      });
+        duration: 15000,
+      }, true); // forceShow = true para progressão importante
       
       return;
     }
@@ -1062,10 +1165,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] ⚖️ Peso fora do alvo mas boa performance: usado ${actualWeight}kg vs alvo ${targetWeight}kg`);
       
-      toast({
+      showToastPWA({
         title: "⚖️ Observação sobre Carga",
         description: `Ótimo desempenho! Você usou ${actualWeight}kg (${weightDifference > 0 ? '+' : ''}${weightDifference.toFixed(1)}kg vs alvo de ${targetWeight}kg). Considere ajustar o peso base do exercício.`,
-        duration: 8000,
+        duration: 10000,
       });
       
       return;
@@ -1073,32 +1176,32 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     
     // 4. FEEDBACK PARA PERFORMANCE MISTA OU BOA
     if (setsFailingTarget > 0 && setsFailingTarget < exercise.sets / 2) {
-      toast({
+      showToastPWA({
         title: "📊 Performance Mista",
         description: `Algumas séries abaixo do alvo. Mantenha ${actualWeight}kg e foque na consistência técnica para atingir ${targetReps} reps em todas as séries.`,
-        duration: 10000,
+        duration: 12000,
       });
     } else if (setsReachingTarget === exercise.sets && avgReps < targetReps + 1.5) {
-      toast({
+      showToastPWA({
         title: "💪 Boa Performance!",
         description: `Atingiu o alvo em todas as séries. Continue com ${actualWeight}kg e busque aumentar gradualmente as repetições antes de aumentar a carga.`,
-        duration: 8000,
+        duration: 10000,
       });
     } else if (setsWithLowReps === 0 && setsReachingTarget > 0 && setsReachingTarget < exercise.sets) {
       const consistencyPercentage = Math.round((setsReachingTarget / exercise.sets) * 100);
       
       console.log(`[PROGRESSÃO] 👍 Progresso parcial: ${setsReachingTarget}/${exercise.sets} séries no alvo (${consistencyPercentage}%)`);
       
-      toast({
+      showToastPWA({
         title: "👍 Progredindo",
         description: `${consistencyPercentage}% das séries no alvo (${setsReachingTarget}/${exercise.sets}). Continue com ${actualWeight}kg e foque na consistência!`,
-        duration: 6000,
+        duration: 8000,
       });
     } else if (setsReachingTarget > exercise.sets / 2) {
-      toast({
+      showToastPWA({
         title: "🔥 Performance Sólida",
         description: `Maioria das séries no alvo ou acima. Continue progredindo com foco na consistência técnica. Peso atual: ${actualWeight}kg.`,
-        duration: 8000,
+        duration: 10000,
       });
     }
 
@@ -1238,11 +1341,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       console.log(`[PROGRESSÃO] 🚀 EXIBINDO ALERTA DE AUMENTO: ${actualWeight}kg → ${newWeight}kg (média +${avgExtraReps.toFixed(1)} reps, min: ${minReps})`);
       
       // Usar toast direto para garantir que aparece
-      toast({
+      showToastPWA({
         title: "🎯 Excelente! Hora de Progredir",
         description: `Todas as séries com ${targetReps}+ repetições usando ${actualWeight}kg! Considere aumentar o peso no próximo treino para continuar progredindo.`,
-        duration: 12000,
-      });
+        duration: 15000,
+      }, true); // forceShow = true para progressão importante
       
       return;
     } else {
@@ -1255,10 +1358,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] ⚖️ Peso fora do alvo mas boa performance: usado ${actualWeight}kg vs alvo ${targetWeight}kg`);
       
-      toast({
+      showToastPWA({
         title: "⚖️ Observação sobre Carga",
         description: `Ótimo desempenho! Você usou ${actualWeight}kg (${weightDifference > 0 ? '+' : ''}${weightDifference.toFixed(1)}kg vs alvo de ${targetWeight}kg). Considere ajustar o peso base do exercício.`,
-        duration: 8000,
+        duration: 10000,
       });
       
       return;
@@ -1270,10 +1373,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] 👍 Progresso parcial: ${setsReachingTarget}/${exercise.sets} séries no alvo (${consistencyPercentage}%)`);
       
-      toast({
+      showToastPWA({
         title: "👍 Progredindo",
         description: `${consistencyPercentage}% das séries no alvo (${setsReachingTarget}/${exercise.sets}). Continue com ${actualWeight}kg e foque na consistência!`,
-        duration: 6000,
+        duration: 8000,
       });
     }
 
@@ -1325,11 +1428,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         const actualRepsValue = getInputValue(currentExercise.id, 'actual_reps', '');
         
         if (!actualRepsValue) {
-          showToastOnce('reps-required', {
+          showToastPWA({
             title: "Repetições não informadas",
             description: "Por favor, informe quantas repetições você fez.",
             variant: "destructive",
-          });
+            duration: 5000,
+          }, true); // forceShow = true para erros críticos
           return;
         }
         
@@ -1337,11 +1441,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         targetReps = parseInt(currentExercise.reps);
         
         if (isNaN(actualReps)) {
-          showToastOnce('reps-invalid', {
+          showToastPWA({
             title: "Repetições inválidas",
             description: "Por favor, informe um número válido de repetições.",
             variant: "destructive",
-          });
+            duration: 5000,
+          }, true); // forceShow = true para erros críticos
           return;
         }
         
@@ -1914,10 +2019,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         console.error("Erro ao limpar dados do treino:", error);
       }
       
-      showToastOnce('workout-completed', {
+      showToastPWA({
         title: "Treino concluído!",
         description: "Seu treino foi concluído com sucesso.",
-      });
+        duration: 6000,
+      }, true); // forceShow = true para conclusão do treino
       
       // Chamar o callback de conclusão
       onFinish()
@@ -2084,10 +2190,10 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         console.log(`Peso do exercício ${exerciseId} atualizado com sucesso para ${weightValue}kg`);
         
         // Mostrar toast de confirmação apenas quando houver alteração real
-        toast({
+        showToastPWA({
           title: "Peso atualizado",
           description: `Peso padrão atualizado de ${originalWeight}kg para ${weightValue}kg. Na próxima execução deste treino, este será o peso inicial.`,
-          duration: 3000
+          duration: 4000
         });
       }
     } catch (error) {
