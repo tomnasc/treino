@@ -133,52 +133,94 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }, 5000);
   };
 
-  // Função otimizada para iPhone/PWA - versão simplificada e robusta
+  // Função super-simplificada para iPhone - VERSÃO DE DEBUG
   const showToastPWA = (toastConfig: any, forceShow: boolean = false) => {
+    // Debug detalhado para iPhone
+    console.log(`[TOAST-DEBUG] Iniciando toast:`, {
+      title: toastConfig.title,
+      description: toastConfig.description,
+      forceShow,
+      userAgent: navigator.userAgent,
+      isStandalone: (window.navigator as any).standalone,
+      displayMode: window.matchMedia('(display-mode: standalone)').matches
+    });
+    
     try {
-      console.log(`[TOAST] Exibindo toast:`, toastConfig.title);
-      
-      // Usar implementação direta do toast para iPhone
-      toast({
-        ...toastConfig,
-        duration: toastConfig.duration || 10000, // Duração maior para iPhone
-      });
-      
-      // Em dispositivos móveis, adicionar vibração se disponível
-      if (forceShow && toastConfig.title && (
-        toastConfig.title.includes('Progredir') || 
-        toastConfig.title.includes('Repetições') ||
-        toastConfig.title.includes('Ajuste') ||
-        toastConfig.title.includes('⚠️') ||
-        toastConfig.title.includes('💪') ||
-        toastConfig.title.includes('🎯')
-      )) {
-        // Vibração mais perceptível no iPhone
-        vibrateDevice([150, 100, 150]); 
-      }
-    } catch (error) {
-      console.error('[TOAST] Erro ao exibir toast:', error);
-      // Fallback simples
-      toast({
+      // Usar sempre a função toast básica - mais compatível
+      const toastData = {
         title: toastConfig.title || "Aviso",
         description: toastConfig.description || "",
-        duration: 8000
-      });
+        duration: 12000, // 12 segundos para iPhone
+        variant: toastConfig.variant || "default"
+      };
+      
+      console.log(`[TOAST-DEBUG] Chamando toast() com:`, toastData);
+      
+      // Chamar toast de forma mais direta
+      const result = toast(toastData);
+      
+      console.log(`[TOAST-DEBUG] Toast chamado, resultado:`, result);
+      
+      // Vibração para iPhone (se forceShow)
+      if (forceShow) {
+        console.log(`[TOAST-DEBUG] Tentando vibração...`);
+        vibrateDevice([200, 100, 200]);
+      }
+      
+      // Forçar scroll para o topo para garantir visibilidade no iPhone
+      if (forceShow) {
+        setTimeout(() => {
+          try {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            console.log(`[TOAST-DEBUG] Scroll para topo executado`);
+          } catch (scrollError) {
+            console.log(`[TOAST-DEBUG] Erro no scroll:`, scrollError);
+          }
+        }, 100);
+      }
+      
+      return result;
+      
+    } catch (error) {
+      console.error('[TOAST-DEBUG] ERRO ao exibir toast:', error);
+      
+      // Fallback ultra-básico
+      try {
+        alert(`${toastConfig.title || 'Aviso'}: ${toastConfig.description || ''}`);
+        console.log(`[TOAST-DEBUG] Fallback alert() executado`);
+      } catch (alertError) {
+        console.error('[TOAST-DEBUG] Até alert() falhou:', alertError);
+      }
     }
   };
 
-  // Função para detectar se estamos em PWA (simplificada)
-  const isPWA = () => {
-    return window.matchMedia('(display-mode: standalone)').matches || 
-           (window.navigator as any).standalone === true ||
-           document.referrer.includes('android-app://');
+  // Detectar iPhone especificamente
+  const isIPhone = () => {
+    return /iPhone|iPod/.test(navigator.userAgent) || 
+           ((navigator.platform === 'MacIntel') && (navigator.maxTouchPoints > 1));
   };
 
-  // NOVA implementação simplificada de WakeLock para iPhone
+  // WakeLock otimizado especificamente para iPhone
   const enableWakeLock = useCallback(async () => {
+    console.log('[WAKELOCK-DEBUG] Iniciando WakeLock...', {
+      isIPhone: isIPhone(),
+      hasWakeLock: 'wakeLock' in navigator,
+      userAgent: navigator.userAgent.substring(0, 100)
+    });
+    
     if (!('wakeLock' in navigator)) {
       console.log('[WAKELOCK] WakeLock API não suportada neste navegador');
       setWakeLockSupported(false);
+      
+      // Para iPhone, mostrar dica específica
+      if (isIPhone()) {
+        showToastPWA({
+          title: "📱 iPhone Detectado",
+          description: "Para manter a tela ativa, vá em Ajustes > Tela e Brilho > Bloqueio Automático e selecione 'Nunca' durante o treino.",
+          duration: 15000
+        }, true);
+      }
+      
       return;
     }
 
@@ -186,27 +228,61 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
     try {
       if (wakeLockRef.current) {
-        console.log('[WAKELOCK] WakeLock já está ativo');
-        return;
+        console.log('[WAKELOCK-DEBUG] WakeLock já está ativo, verificando status...');
+        if (!wakeLockRef.current.released) {
+          console.log('[WAKELOCK-DEBUG] WakeLock ainda está ativo');
+          return;
+        } else {
+          console.log('[WAKELOCK-DEBUG] WakeLock anterior foi liberado, criando novo');
+          wakeLockRef.current = null;
+        }
       }
 
-      console.log('[WAKELOCK] Ativando WakeLock...');
+      console.log('[WAKELOCK-DEBUG] Solicitando WakeLock...');
       const wakeLock = await navigator.wakeLock.request('screen');
       wakeLockRef.current = wakeLock;
       setWakeLockEnabled(true);
       
-      console.log('[WAKELOCK] WakeLock ativado com sucesso');
+      console.log('[WAKELOCK-DEBUG] ✅ WakeLock ativado com sucesso!', {
+        type: wakeLock.type,
+        released: wakeLock.released
+      });
 
-      wakeLock.addEventListener('release', () => {
-        console.log('[WAKELOCK] WakeLock foi liberado');
+      // Toast de confirmação mais visível
+      showToastPWA({
+        title: "🔒 Tela Protegida",
+        description: "A tela permanecerá ativa durante todo o treino.",
+        duration: 5000
+      }, true);
+
+      wakeLock.addEventListener('release', (event) => {
+        console.log('[WAKELOCK-DEBUG] WakeLock foi liberado:', event);
         setWakeLockEnabled(false);
         wakeLockRef.current = null;
+        
+        // Notificar se foi liberado inesperadamente
+        if (!document.hidden) {
+          showToastPWA({
+            title: "⚠️ Tela pode desligar",
+            description: "O bloqueio de tela foi desativado. Evite minimizar o app.",
+            duration: 8000
+          }, true);
+        }
       });
 
     } catch (err) {
-      console.error('[WAKELOCK] Erro ao ativar WakeLock:', err);
+      console.error('[WAKELOCK-DEBUG] Erro ao ativar WakeLock:', err);
       setWakeLockEnabled(false);
       wakeLockRef.current = null;
+      
+      // Dica específica para iPhone se falhou
+      if (isIPhone()) {
+        showToastPWA({
+          title: "📱 Dica para iPhone",
+          description: "WakeLock falhou. Desligue o 'Bloqueio Automático' nas configurações do iPhone durante o treino.",
+          duration: 12000
+        }, true);
+      }
     }
   }, []);
 
@@ -228,14 +304,25 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
   useEffect(() => {
     enableWakeLock();
     
-    // Toast de teste para verificar se funciona no iPhone
+    // Toast de teste MUITO ÓBVIO para iPhone
     setTimeout(() => {
+      console.log('[TOAST-DEBUG] Executando toast de teste inicial...');
       showToastPWA({
-        title: "🏋️ Treino iniciado",
-        description: "O sistema de avisos está funcionando. Você receberá dicas e sugestões durante o treino.",
-        duration: 6000
+        title: "🚨 TESTE - Treino iniciado",
+        description: "SE VOCÊ VÊ ESTE AVISO, o sistema está funcionando! Caso contrário, verifique o console do navegador.",
+        duration: 15000
       }, true);
-    }, 2000);
+    }, 3000);
+    
+    // Toast adicional para dupla verificação
+    setTimeout(() => {
+      console.log('[TOAST-DEBUG] Executando segundo toast de teste...');
+      showToastPWA({
+        title: "🔔 SEGUNDO TESTE",
+        description: "Este é o segundo teste. Se não aparecer, há problema com o sistema de avisos.",
+        duration: 10000
+      }, true);
+    }, 8000);
     
     return () => {
       releaseWakeLock();
@@ -848,15 +935,17 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
 
   // Função para análise imediata de repetições baixas (chamada a cada série)
   const checkForLowRepsWarning = (exerciseId: string, actualReps: number) => {
-    console.log(`[PROGRESSÃO] Verificando repetições: ${actualReps} para exercício ${exerciseId}, série ${currentSetIndex + 1}`);
+    console.log(`[PROGRESSÃO-DEBUG] 🔍 INICIANDO análise imediata: exercício ${exerciseId}, ${actualReps} reps, série ${currentSetIndex + 1}`);
     
     const exercise = exercises.find(ex => ex.id === exerciseId);
     
     // Só analisar exercícios baseados em repetições
     if (!exercise || exercise.exercise_type !== 'reps') {
-      console.log(`[PROGRESSÃO] Pulando análise - exercício não é baseado em repetições`);
+      console.log(`[PROGRESSÃO-DEBUG] ❌ Pulando análise - exercício não é baseado em repetições (tipo: ${exercise?.exercise_type})`);
       return;
     }
+    
+    console.log(`[PROGRESSÃO-DEBUG] ✅ Exercício é baseado em repetições, continuando análise...`);
 
     const currentWeight = getInputValue(exerciseId, 'actual_weight', '');
     const targetReps = parseInt(exercise.reps);
@@ -874,11 +963,13 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] 🚨 MOSTRANDO ALERTA: ${actualReps} repetições ≤ 6 - sugerindo redução de ${suggestionWeight}kg para ${newWeight.toFixed(1)}kg`);
       
+      console.log(`[PROGRESSÃO-DEBUG] Chamando toast de repetições baixas...`);
       showToastPWA({
-        title: "⚠️ Poucas Repetições",
-        description: `Apenas ${actualReps} repetições nesta série. Considere reduzir para ${newWeight.toFixed(1)}kg na próxima série para conseguir mais repetições e melhor execução.`,
-        duration: 10000,
+        title: "⚠️ ATENÇÃO! Poucas Repetições",
+        description: `Só ${actualReps} reps! Reduza para ${newWeight.toFixed(1)}kg na próxima série para melhor execução.`,
+        duration: 12000,
       }, true); // forceShow = true para avisos importantes
+      console.log(`[PROGRESSÃO-DEBUG] Toast de repetições baixas chamado!`);
       
       return;
     }
@@ -1033,11 +1124,13 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       
       console.log(`[PROGRESSÃO] 🚀 SUGERINDO AUMENTO: ${actualWeight}kg → ${newWeight}kg (média +${avgExtraReps.toFixed(1)} reps)`);
       
+      console.log(`[PROGRESSÃO-DEBUG] Chamando toast de progressão...`);
       showToastPWA({
-        title: "🎯 Excelente! Hora de Progredir",
-        description: `Todas as séries com ${targetReps}+ repetições usando ${actualWeight}kg! Considere aumentar para ${newWeight}kg no próximo treino.`,
+        title: "🎯 PROGRESSÃO! Aumente o peso",
+        description: `Excelente! Todas as séries com ${targetReps}+ reps usando ${actualWeight}kg. Próximo treino: ${newWeight}kg!`,
         duration: 15000,
       }, true); // forceShow = true para progressão importante
+      console.log(`[PROGRESSÃO-DEBUG] Toast de progressão chamado!`);
       
       return;
     }
@@ -1334,7 +1427,9 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         }
         
         // Análise imediata das repetições para este exercício
+        console.log(`[PROGRESSÃO-DEBUG] Executando análise imediata: exercício ${currentExercise.id}, ${actualReps} reps`);
         checkForLowRepsWarning(currentExercise.id, actualReps);
+        console.log(`[PROGRESSÃO-DEBUG] Análise imediata concluída`);
       } else {
         // Para exercícios baseados em tempo, usar o tempo do exercício como as repetições
         // (já que o usuário não informa isso manualmente)
