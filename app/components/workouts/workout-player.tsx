@@ -133,141 +133,70 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }, 5000);
   };
 
-  // Função melhorada para mostrar toast que funciona bem em PWA móvel
+  // Função otimizada para iPhone/PWA - versão simplificada e robusta
   const showToastPWA = (toastConfig: any, forceShow: boolean = false) => {
-    // Função para garantir que o toast seja mostrado
-    const displayToast = () => {
-      const pwaMode = isPWA() ? '[PWA]' : '[WEB]';
-      console.log(`[TOAST] ${pwaMode} Exibindo toast:`, toastConfig.title);
+    try {
+      console.log(`[TOAST] Exibindo toast:`, toastConfig.title);
+      
+      // Usar implementação direta do toast para iPhone
       toast({
         ...toastConfig,
-        duration: toastConfig.duration || 8000, // Duração padrão maior para PWA
+        duration: toastConfig.duration || 10000, // Duração maior para iPhone
       });
       
-      // Em PWA, forçar visibilidade e adicionar vibração
-      if (isPWA()) {
-        setTimeout(() => {
-          const toastContainer = document.querySelector('[data-radix-toast-viewport]');
-          if (toastContainer) {
-            (toastContainer as HTMLElement).style.zIndex = '99999';
-            console.log('[TOAST] [PWA] Z-index forçado para toast container');
-          }
-        }, 100);
-        
-        // Adicionar vibração específica para toasts importantes em PWA
-        if (forceShow && toastConfig.title && (
-          toastConfig.title.includes('Progredir') || 
-          toastConfig.title.includes('Repetições') ||
-          toastConfig.title.includes('Ajuste')
-        )) {
-          vibrateDevice([100, 50, 100]); // Vibração dupla para toasts importantes
-        }
+      // Em dispositivos móveis, adicionar vibração se disponível
+      if (forceShow && toastConfig.title && (
+        toastConfig.title.includes('Progredir') || 
+        toastConfig.title.includes('Repetições') ||
+        toastConfig.title.includes('Ajuste') ||
+        toastConfig.title.includes('⚠️') ||
+        toastConfig.title.includes('💪') ||
+        toastConfig.title.includes('🎯')
+      )) {
+        // Vibração mais perceptível no iPhone
+        vibrateDevice([150, 100, 150]); 
       }
-    };
-
-    // Se forceShow estiver true, mostrar imediatamente
-    if (forceShow) {
-      displayToast();
-      return;
-    }
-
-    // Verificar se o documento está visível
-    if (document.visibilityState === 'hidden') {
-      console.log('[TOAST] Documento oculto, aguardando ficar visível para mostrar toast');
-      
-      // Aguardar o documento ficar visível para mostrar o toast
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          console.log('[TOAST] Documento ficou visível, exibindo toast');
-          displayToast();
-          document.removeEventListener('visibilitychange', handleVisibilityChange);
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
-      // Timeout de segurança - mostrar mesmo se a página não ficar visível
-      setTimeout(() => {
-        displayToast();
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      }, 3000);
-    } else {
-      // Documento está visível, mostrar imediatamente
-      displayToast();
+    } catch (error) {
+      console.error('[TOAST] Erro ao exibir toast:', error);
+      // Fallback simples
+      toast({
+        title: toastConfig.title || "Aviso",
+        description: toastConfig.description || "",
+        duration: 8000
+      });
     }
   };
 
-  // Função para detectar se estamos em PWA
+  // Função para detectar se estamos em PWA (simplificada)
   const isPWA = () => {
     return window.matchMedia('(display-mode: standalone)').matches || 
            (window.navigator as any).standalone === true ||
            document.referrer.includes('android-app://');
   };
 
-  // Adicionar listener para garantir que toasts sejam visíveis em PWA
-  useEffect(() => {
-    const handleFocus = () => {
-      if (isPWA()) {
-        console.log('[TOAST] PWA ficou em foco, verificando toasts pendentes');
-        // Forçar re-render dos toasts quando PWA volta ao foco
-        const toastContainer = document.querySelector('[data-radix-toast-viewport]');
-        if (toastContainer) {
-          console.log('[TOAST] Container de toast encontrado, garantindo visibilidade');
-          (toastContainer as HTMLElement).style.zIndex = '99999';
-          (toastContainer as HTMLElement).style.position = 'fixed';
-        }
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isPWA()) {
-        console.log('[TOAST] PWA ficou visível, verificando toasts');
-        // Aguardar um pouco para o PWA estabilizar antes de verificar toasts
-        setTimeout(handleFocus, 500);
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  // NOVA implementação robusta de WakeLock usando API nativa
+  // NOVA implementação simplificada de WakeLock para iPhone
   const enableWakeLock = useCallback(async () => {
-    // Verificar se a API está disponível
     if (!('wakeLock' in navigator)) {
       console.log('[WAKELOCK] WakeLock API não suportada neste navegador');
       setWakeLockSupported(false);
-      
-      showToastPWA({
-        title: "Informação",
-        description: "Seu dispositivo não suporta manter a tela ativa automaticamente. Considere desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
-        variant: "default",
-      });
       return;
     }
 
     setWakeLockSupported(true);
 
     try {
-      // Verificar se já existe um WakeLock ativo
       if (wakeLockRef.current) {
-        console.log('[WAKELOCK] WakeLock já está ativo, reutilizando');
+        console.log('[WAKELOCK] WakeLock já está ativo');
         return;
       }
 
-      console.log('[WAKELOCK] Tentando ativar WakeLock...');
+      console.log('[WAKELOCK] Ativando WakeLock...');
       const wakeLock = await navigator.wakeLock.request('screen');
       wakeLockRef.current = wakeLock;
       setWakeLockEnabled(true);
       
-      console.log('[WAKELOCK] ✅ WakeLock ativado com sucesso! Tela permanecerá ativa durante o treino');
+      console.log('[WAKELOCK] WakeLock ativado com sucesso');
 
-      // Adicionar listener para detectar quando o WakeLock é liberado
       wakeLock.addEventListener('release', () => {
         console.log('[WAKELOCK] WakeLock foi liberado');
         setWakeLockEnabled(false);
@@ -278,13 +207,6 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       console.error('[WAKELOCK] Erro ao ativar WakeLock:', err);
       setWakeLockEnabled(false);
       wakeLockRef.current = null;
-      
-      // Notificar o usuário sobre o problema
-      showToastPWA({
-        title: "Aviso",
-        description: "Não foi possível manter a tela ativa automaticamente. Você pode precisar desativar o bloqueio automático nas configurações do dispositivo durante o treino.",
-        variant: "default",
-      });
     }
   }, []);
 
@@ -302,56 +224,31 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }
   }, []);
 
-  // Efeito para ativar o WakeLock e manter a tela ativa durante o treino
+  // Efeito simplificado para ativar o WakeLock
   useEffect(() => {
-    // Ativar WakeLock quando o componente for montado
     enableWakeLock();
-
-    // Evento para reativar o WakeLock quando o documento se tornar visível novamente
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[WAKELOCK] Página ficou visível, verificando WakeLock...');
-        
-        // Reativar WakeLock se necessário e suportado
-        if (wakeLockSupported && !wakeLockRef.current) {
-          console.log('[WAKELOCK] Reativando WakeLock após página ficar visível');
-          await enableWakeLock();
-        }
-        
-        // Verificar e reativar AudioContext se necessário
-        if (audioContext && audioContext.state === 'suspended') {
-          console.log('[ÁUDIO] Página ficou visível, tentando reativar AudioContext');
-          try {
-            await audioContext.resume();
-            console.log('[ÁUDIO] AudioContext reativado após página ficar visível');
-          } catch (error) {
-            console.error('[ÁUDIO] Erro ao reativar AudioContext:', error);
-          }
-        }
-      } else if (document.visibilityState === 'hidden') {
-        console.log('[WAKELOCK] Página ficou em segundo plano');
-        // Não liberar o WakeLock aqui - deixar que continue funcionando em segundo plano
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Cleanup: liberar o WakeLock quando o componente for desmontado
+    
+    // Toast de teste para verificar se funciona no iPhone
+    setTimeout(() => {
+      showToastPWA({
+        title: "🏋️ Treino iniciado",
+        description: "O sistema de avisos está funcionando. Você receberá dicas e sugestões durante o treino.",
+        duration: 6000
+      }, true);
+    }, 2000);
+    
     return () => {
       releaseWakeLock();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [enableWakeLock, releaseWakeLock, wakeLockSupported, audioContext]);
+  }, [enableWakeLock, releaseWakeLock]);
 
-  // Verificar se há um estado salvo do treino - VERSÃO SIMPLIFICADA E CORRIGIDA
+  // Verificar se há um estado salvo do treino - VERSÃO SIMPLIFICADA
   useEffect(() => {
     if (!workoutHistoryId) return;
     
-    // Função para carregar e inicializar o estado do treino
     const loadWorkoutState = async () => {
-      console.log("Iniciando carregamento do estado do treino:", workoutHistoryId);
+      console.log("Carregando estado do treino:", workoutHistoryId);
       
-      // Configurar estado inicial
       const initialHistory: Record<string, {
         sets_completed: number
         actual_reps: string
@@ -360,7 +257,6 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         reps_history: number[]
       }> = {};
       
-      // Criar histórico inicial vazio para cada exercício
       exercises.forEach(exercise => {
         initialHistory[exercise.id] = {
           sets_completed: 0,
@@ -371,7 +267,6 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         };
       });
       
-      // PARTE 1: Verificar dados no banco de dados
       try {
         const { data, error } = await supabase
           .from("exercise_history")
@@ -382,10 +277,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         
         let completedExerciseIds: string[] = [];
         
-        // Se temos dados no banco, aplicar ao histórico inicial
         if (data && data.length > 0) {
-          console.log("Dados encontrados no banco:", data.length, "registros");
-          
           data.forEach(record => {
             if (initialHistory[record.workout_exercise_id]) {
               initialHistory[record.workout_exercise_id] = {
@@ -397,7 +289,6 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
                 reps_history: record.reps_history_json || []
               };
               
-              // Verificar se o exercício está completo
               const exercise = exercises.find(ex => ex.id === record.workout_exercise_id);
               if (exercise && record.sets_completed >= exercise.sets) {
                 completedExerciseIds.push(record.workout_exercise_id);
@@ -406,23 +297,19 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           });
         }
         
-        // PARTE 2: Verificar dados no localStorage
         let savedState = localStorage.getItem(`workout_state_${workoutHistoryId}`);
         if (!savedState) {
           savedState = sessionStorage.getItem(`workout_state_backup_${workoutHistoryId}`);
         }
         
-        // Valores padrão
         let exerciseIndex = 0;
         let setIndex = 0;
         let exercises_completed = completedExerciseIds;
         let duration = 0;
         
-        // Se temos um estado salvo, atualizar os valores
         if (savedState) {
           try {
             const parsedState = JSON.parse(savedState);
-            console.log("Estado local encontrado");
             
             exerciseIndex = typeof parsedState.currentExerciseIndex === 'number' ? 
               Math.min(parsedState.currentExerciseIndex, exercises.length - 1) : 0;
@@ -432,29 +319,24 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
               
             duration = parsedState.workoutDuration || 0;
             
-            // Recuperar o tempo pausado
             const savedPausedTime = parsedState.pausedTime || 0;
             setPausedTime(savedPausedTime);
             
-            // Combinar exercícios completos
             if (parsedState.exercisesCompleted && Array.isArray(parsedState.exercisesCompleted)) {
               exercises_completed = Array.from(
                 new Set([...completedExerciseIds, ...parsedState.exercisesCompleted])
               );
             }
             
-            // Mesclar histórico de exercícios do estado local
             if (parsedState.exerciseHistory) {
               Object.keys(parsedState.exerciseHistory).forEach(exId => {
                 if (initialHistory[exId]) {
-                  // Sempre usar o maior valor para sets_completed
                   const localSets = parsedState.exerciseHistory[exId].sets_completed || 0;
                   const dbSets = initialHistory[exId].sets_completed;
                   
                   initialHistory[exId] = {
                     ...initialHistory[exId],
                     ...parsedState.exerciseHistory[exId],
-                    // Garantir que não perdemos progresso
                     sets_completed: Math.max(localSets, dbSets)
                   };
                 }
@@ -463,60 +345,35 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
           } catch (error) {
             console.error("Erro ao processar estado local:", error);
           }
-        } else if (completedExerciseIds.length > 0) {
-          // Se não temos estado local, mas temos dados no banco,
-          // calcular o próximo exercício/série não completo
-          for (let i = 0; i < exercises.length; i++) {
-            const ex = exercises[i];
-            if (!completedExerciseIds.includes(ex.id)) {
-              exerciseIndex = i;
-              
-              // Verificar qual série está pendente
-              const completedSets = initialHistory[ex.id].sets_completed;
-              setIndex = Math.min(completedSets, ex.sets - 1);
-              
-              break;
-            }
-          }
         }
         
-        // PARTE 3: Aplicar o estado final
-        // Aplicar somente uma vez, com valores consolidados
         setExerciseHistory(initialHistory);
         setCurrentExerciseIndex(exerciseIndex);
         setCurrentSetIndex(setIndex);
         setExercisesCompleted(exercises_completed);
-        
-        // Configurar o cronômetro para continuar de onde parou
         setWorkoutDuration(duration);
         
-        // Ajustar a hora de início para manter a duração
-        // Adicionar o tempo pausado para ter um cálculo correto
         const calculatedStartTime = new Date();
         calculatedStartTime.setSeconds(calculatedStartTime.getSeconds() - duration - Math.floor(pausedTime / 1000));
         setWorkoutStartTime(calculatedStartTime);
         
-        console.log(`Estado restaurado: Exercício ${exerciseIndex + 1}, Série ${setIndex + 1}, Duração: ${duration}s, Pausado: ${Math.floor(pausedTime / 1000)}s`);
+        console.log(`Estado restaurado: Exercício ${exerciseIndex + 1}, Série ${setIndex + 1}`);
         
-        // Mostrar alerta uma única vez
-        showToastOnce('treino-retomado', {
+        // Mostrar toast de retomada usando a versão otimizada para iPhone
+        showToastPWA({
           title: "Treino retomado",
-          description: `Retomando treino do exercício ${exerciseIndex + 1}, série ${setIndex + 1}.`
-        });
+          description: `Retomando treino do exercício ${exerciseIndex + 1}, série ${setIndex + 1}.`,
+          duration: 8000
+        }, true);
         
       } catch (error) {
         console.error("Erro ao carregar estado do treino:", error);
-        
-        // Em caso de erro, usar valores iniciais simples
         setExerciseHistory(initialHistory);
       }
     };
     
-    // Iniciar o carregamento
     loadWorkoutState();
-    
-    // Evitar dependências que causam reexecução desnecessária
-  }, [workoutHistoryId]); // Dependências mínimas para evitar múltiplas inicializações
+  }, [workoutHistoryId]);
 
   // Adicionar listener para evento de saída do navegador
   useEffect(() => {
@@ -555,40 +412,40 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       return event.returnValue;
     };
     
-    // Adicionar event listener para beforeunload
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    // Adicionar listener para visibilitychange para salvar quando o app for para background
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        console.log("Página ficou em segundo plano, salvando estado");
-        try {
-          const backgroundState = {
-            currentExerciseIndex,
-            currentSetIndex, 
-            exercisesCompleted,
-            workoutDuration,
-            exerciseHistory,
-            pausedTime,
-            lastUpdated: new Date().toISOString()
-          };
-          
-          const stateJSON = JSON.stringify(backgroundState);
-          localStorage.setItem(`workout_state_${workoutHistoryId}`, stateJSON);
-          sessionStorage.setItem(`workout_state_backup_${workoutHistoryId}`, stateJSON);
-        } catch (error) {
-          console.error("Erro ao salvar estado em segundo plano:", error);
+          // Adicionar event listener para beforeunload
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      // Listener simplificado para salvar estado em background (sem interferir com toasts)
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          console.log("Página ficou em segundo plano, salvando estado");
+          try {
+            const backgroundState = {
+              currentExerciseIndex,
+              currentSetIndex, 
+              exercisesCompleted,
+              workoutDuration,
+              exerciseHistory,
+              pausedTime,
+              lastUpdated: new Date().toISOString()
+            };
+            
+            const stateJSON = JSON.stringify(backgroundState);
+            localStorage.setItem(`workout_state_${workoutHistoryId}`, stateJSON);
+            sessionStorage.setItem(`workout_state_backup_${workoutHistoryId}`, stateJSON);
+          } catch (error) {
+            console.error("Erro ao salvar estado em segundo plano:", error);
+          }
         }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Cleanup
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
   }, [workoutHistoryId, currentExerciseIndex, currentSetIndex, exercisesCompleted, workoutDuration, exerciseHistory]);
 
   // Adicionar um efeito para carregar valores de input quando o exercício atual mudar
@@ -808,8 +665,14 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }
   }, [audioContext]);
 
-  // Função auxiliar para vibrar o dispositivo (usado como fallback para o som)
+  // Função auxiliar para vibrar o dispositivo (otimizada para iPhone)
   const vibrateDevice = (pattern: number[]) => {
+    // Verificar se há suporte a vibração
+    if (!('vibrate' in navigator)) {
+      console.log("[VIBRAÇÃO] API de vibração não disponível neste dispositivo");
+      return;
+    }
+    
     // Apenas tentar vibrar se o usuário já interagiu com a página
     if (!userInteracted) {
       console.log("[VIBRAÇÃO] Vibração bloqueada - usuário ainda não interagiu com a página");
@@ -817,14 +680,34 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
     }
     
     try {
-      if ('vibrate' in navigator) {
-        const result = navigator.vibrate(pattern);
-        console.log(`[VIBRAÇÃO] Padrão de vibração ${pattern.join(',')}ms executado: ${result}`);
-      } else {
-        console.log("[VIBRAÇÃO] API de vibração não disponível neste dispositivo");
+      // iPhone tem algumas limitações, então vamos ajustar o padrão
+      const adjustedPattern = pattern.map(duration => Math.min(duration, 400)); // Máximo 400ms
+      
+      const result = navigator.vibrate(adjustedPattern);
+      console.log(`[VIBRAÇÃO] Padrão ajustado [${adjustedPattern.join(',')}]ms executado: ${result}`);
+      
+      // Para iPhone, tentar vibração adicional se a primeira não funcionar
+      if (!result && pattern.length > 0) {
+        // Fallback: vibração única de 200ms
+        setTimeout(() => {
+          try {
+            navigator.vibrate(200);
+            console.log("[VIBRAÇÃO] Fallback de vibração única executada");
+          } catch (fallbackError) {
+            console.log("[VIBRAÇÃO] Fallback também falhou");
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('[VIBRAÇÃO] Erro ao tentar vibrar dispositivo:', error);
+      
+      // Último fallback: vibração básica
+      try {
+        navigator.vibrate(100);
+        console.log("[VIBRAÇÃO] Vibração básica de fallback executada");
+      } catch (basicError) {
+        console.log("[VIBRAÇÃO] Vibração não suportada neste dispositivo");
+      }
     }
   };
 
@@ -851,11 +734,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       console.log(`[ÁUDIO] Beep ${type} bloqueado - usuário ainda não interagiu com a página`);
       
       // Mostrar uma dica na primeira vez que isso ocorrer
-      showToastOnce('audio-interaction-required', {
-        title: "Toque na tela",
-        description: "Para ativar os beeps e vibrações do app, interaja com a tela pelo menos uma vez.",
-        duration: 5000
-      });
+              showToastPWA({
+          title: "🔊 Toque na tela",
+          description: "Para ativar os beeps e vibrações do app, interaja com a tela pelo menos uma vez.",
+          duration: 8000
+        }, true);
       
       return;
     }
@@ -1544,7 +1427,7 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
             return;
           }
           
-          // Calcular os dados corretos baseados no que acabou de ser processado
+          // Calcular os dados corretos baseado no que acabou de ser processado
           const currentWeight = getInputValue(exerciseId, 'actual_weight', '');
           const currentNotes = getInputValue(exerciseId, 'notes', '');
           
@@ -1859,11 +1742,12 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
         console.error("Erro ao salvar no banco de dados:", dbError);
         
         // Mostrar erro ao usuário
-        showToastOnce('db-save-error', {
-          title: "Falha ao salvar no servidor",
+        showToastPWA({
+          title: "⚠️ Falha ao salvar no servidor",
           description: "Seus dados foram salvos localmente e serão sincronizados mais tarde.",
-          variant: "default"
-        });
+          variant: "default",
+          duration: 10000
+        }, true);
         
         return false;
       }
@@ -2337,10 +2221,11 @@ export function WorkoutPlayer({ workout, exercises, onFinish }: WorkoutPlayerPro
       setIsButtonEnabled(false);
       
       // Mostrar dica após reiniciar
-      showToastOnce('timer-reset', {
-        title: "Cronômetro reiniciado",
-        description: "Clique em 'Iniciar' quando estiver pronto para começar o exercício."
-      });
+      showToastPWA({
+        title: "🔄 Cronômetro reiniciado",
+        description: "Clique em 'Iniciar' quando estiver pronto para começar o exercício.",
+        duration: 6000
+      }, true);
     }
   };
 
